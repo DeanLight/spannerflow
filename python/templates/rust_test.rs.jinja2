@@ -1,0 +1,14 @@
+extern crate timely;
+extern crate differential_dataflow;
+
+use differential_dataflow::input::InputSession;
+use differential_dataflow::operators::*;
+
+#[no_mangle]
+pub extern "C" fn foo(rows: &mut Vec<u64>){
+    for row in rows.iter_mut() {
+        *row *= 1000;
+    }
+    rows.push(42);
+    rows.push(43);
+}

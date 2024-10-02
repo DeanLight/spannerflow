@@ -1,6 +1,10 @@
 import asyncio
 import inspect
+import jinja2
+import subprocess
 from dataclasses import dataclass
+from pathlib import Path
+from datetime import datetime
 from typing import AsyncGenerator, Generator
 
 import grpc
@@ -18,6 +22,7 @@ class Config:
     DATAFLOW_PORT: int = 50051
     DATAFLOW_IP: str = "localhost"
     DATAFLOW_ADDRESS: str = f"{DATAFLOW_IP}:{DATAFLOW_PORT}"
+    GENERATED_RUST_PROJECT_PATH: Path = Path("generated_rust")
 
 
 def register_function(func):
@@ -42,6 +47,7 @@ def register_function(func):
     return func
 
 
+## Example Functions Start ##
 @register_function
 async def async_greet(rows: AsyncGenerator[str, None]) -> AsyncGenerator[str, None]:
     async for row in rows:
@@ -52,7 +58,64 @@ async def async_greet(rows: AsyncGenerator[str, None]) -> AsyncGenerator[str, No
 def sync_greet(rows: Generator[str, None, None]) -> Generator[str, None, None]:
     for row in rows:
         yield f"Hello, World! {row}"
+## Example Functions End ##
 
+
+
+def create_cargo_toml(file_name: str, timestamp: str) -> None:
+    # Define project name and dependencies
+    dest_path = Config.GENERATED_RUST_PROJECT_PATH / file_name
+    dependencies = [
+        {"name": "timely", "version": "0.12.0"},  # Check for the latest version
+        {"name": "differential-dataflow", "version": "0.12.0"},
+    ]
+
+    # Load the Jinja2 template
+    template_loader = jinja2.FileSystemLoader(searchpath="./templates")
+    template_env = jinja2.Environment(loader=template_loader)
+    template = template_env.get_template("Cargo.toml.jinja2")
+
+    # Render the template with context
+    output_text = template.render(project_name="spannerflow", 
+                                  rust_file_name=f"{timestamp}.rs",
+                                  dependencies=dependencies)
+
+    # Write the output to Cargo.toml
+    with open(dest_path, "w") as f:
+        f.write(output_text)
+
+def create_rust_file(timestamp: str) -> None:
+    # Define project name and dependencies
+    dest_path = Config.GENERATED_RUST_PROJECT_PATH / "src" / f"{timestamp}.rs"
+    template_loader = jinja2.FileSystemLoader(searchpath="./templates")
+    template_env = jinja2.Environment(loader=template_loader)
+    template = template_env.get_template("rust_test.rs.jinja2")
+
+    # Render the template with context
+    output_text = template.render()
+
+    # Write the output to Cargo.toml
+    with open(dest_path, "w") as f:
+        f.write(output_text)
+    
+def build_so() -> None:
+    Config.GENERATED_RUST_PROJECT_PATH.joinpath("src").mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    cargo_file_name = f"Cargo.toml"
+    create_cargo_toml(cargo_file_name, timestamp)
+    create_rust_file(timestamp)
+    command =  [
+            "cargo",
+            "build",
+            "--release",
+            "--manifest-path",
+            str(Config.GENERATED_RUST_PROJECT_PATH.joinpath(cargo_file_name).absolute()),
+        ]
+    print(command)
+    subprocess.run(
+       command,
+       cwd=str(Config.GENERATED_RUST_PROJECT_PATH),
+    )
 
 class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
     async def RunIEFunction(
@@ -117,4 +180,5 @@ async def serve() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(serve())
+    # asyncio.run(serve())
+    build_so()

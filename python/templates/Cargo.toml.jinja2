@@ -1,0 +1,15 @@
+[package]
+name = "{{ project_name }}"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/{{rust_file_name }}"
+
+[dependencies]
+{% for dependency in dependencies %}
+{{ dependency.name }} = "{{ dependency.version }}"
+{% endfor %}
+
+[workspace]

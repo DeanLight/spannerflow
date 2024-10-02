@@ -36,8 +36,13 @@ impl DataflowService for MyDataflowService {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
 
-        let collections = COLLECTIONS.lock().unwrap();
-
+        let collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
         if let Some(vec) = collections.get(&req.collection_name) {
             // Create a vector of GetCollectionResponse
             let responses: Vec<Result<GetCollectionResponse, Status>> = vec.iter().cloned().map(|row| {
@@ -60,7 +65,13 @@ impl DataflowService for MyDataflowService {
         request: Request<()>,
     ) -> Result<Response<GetCollectionsResponse>, Status> {
         println!("Got a request: {:?}", request);
-        let collections = COLLECTIONS.lock().unwrap();
+        let collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
         let collection_names: Vec<String> = collections.keys().cloned().collect();
         let reply = GetCollectionsResponse {
             collection_names,
@@ -75,7 +86,13 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<()>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
-        let mut collections = COLLECTIONS.lock().unwrap();
+        let mut collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
 
         if !collections.contains_key(&req.collection_name) {
             return Err(Status::not_found("Collection not found"));
@@ -96,7 +113,13 @@ impl DataflowService for MyDataflowService {
         println!("Got a request: {:?}", request);
         let req = request.into_inner(); 
 
-        let mut collections = COLLECTIONS.lock().unwrap();
+        let mut collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
 
         if !collections.contains_key(&req.collection_name) {
             return Err(Status::not_found("Collection not found"));
@@ -120,7 +143,13 @@ impl DataflowService for MyDataflowService {
         let reply: () = ();
         let req = request.into_inner();
         
-        let mut collections = COLLECTIONS.lock().unwrap();
+        let mut collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
         if collections.contains_key(&req.collection_name) {
             return Err(Status::already_exists("Collection already exists"));
         }
@@ -136,7 +165,13 @@ impl DataflowService for MyDataflowService {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
         
-        let mut collections = COLLECTIONS.lock().unwrap();
+        let mut collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
         if !collections.contains_key(&req.collection_name) {
             return Err(Status::not_found("Collection not found"));
         }
@@ -153,13 +188,23 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<()>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
-        let mut collections = COLLECTIONS.lock().unwrap();
-        
+        let mut collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
+
         if !collections.contains_key(&req.input_collection_name) {
             return Err(Status::not_found("Collection not found"));
         }
         let collection = collections.get_mut(&req.input_collection_name).unwrap();
-        run_dataflow_so(req.so_path, req.fn_name, collection);
+        let result = run_dataflow_so(req.so_path, req.fn_name, collection);
+        if let Err(status) = result {
+            return Err(status); // Propagate the error back to the caller
+        }
+
         let reply: () = ();
 
         Ok(Response::new(reply))
@@ -179,20 +224,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn run_dataflow_so(so_path: String, fn_name: String, collection: &mut Vec<u64>) {
+fn run_dataflow_so(so_path: String, fn_name: String, collection: &mut Vec<u64>) -> Result<(), Status> {
     // Load and use the shared library
     unsafe {
-        let lib = Library::new(so_path).unwrap();
-        let function: Symbol<unsafe extern "C" fn(&mut Vec<u64>)> = lib.get(fn_name.as_bytes()).unwrap();
+        let lib = Library::new(&so_path).map_err(|e| {
+            eprintln!("Failed to load library from path {}: {:?}", so_path, e);
+            Status::not_found("Failed to load shared library")
+        })?;
 
-        function(collection);
-        println!("Output: {:?}", collection);
+        let function: Symbol<unsafe extern "C" fn(&mut Vec<u64>)> = lib.get(fn_name.as_bytes()).map_err(|e| {
+            eprintln!("Failed to get function {}: {:?}", fn_name, e);
+            Status::not_found("Failed to get function from library")
+        })?;
         
-        // Explicitly unload the library
+        function(collection);
         std::mem::drop(lib);
     }
+    println!("Output: {:?}", collection);
+    
+    // Explicitly unload the library
 
     println!("Shared library unloaded explicitly.");
+    Ok(())
 }
 
 pub async fn run_ie_function(

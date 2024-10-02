@@ -20,3 +20,4 @@ Cargo.lock
 
 venv
 __pycache__
+python/generated_rust
