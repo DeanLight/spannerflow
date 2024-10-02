@@ -198,7 +198,7 @@ fn run_dataflow_so(so_path: String, fn_name: String, collection: &mut Vec<u64>) 
 pub async fn run_ie_function(
     server_address: String,
     function_name: String,
-    rows: Vec<String>,
+    collection_name: String,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     // Create a gRPC client
     let mut client = IeFunctionServiceClient::connect(server_address).await?;
@@ -206,7 +206,7 @@ pub async fn run_ie_function(
     // Create the request
     let request = RunIeFunctionRequest {
         function_name,
-        rows,
+        collection_name,
     };
 
     // Call the RunIEFunction RPC method

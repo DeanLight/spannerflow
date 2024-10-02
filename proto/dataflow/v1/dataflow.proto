@@ -10,7 +10,7 @@ service IEFunctionService {
 
 message RunIEFunctionRequest {
     string function_name = 1;
-    repeated string rows = 2;
+    string collection_name = 2;
 }
 
 message RunIEFunctionResponse {
