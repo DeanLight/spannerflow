@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
+use csv;
 
 
 use libloading::{Library, Symbol};
@@ -28,6 +29,85 @@ pub struct MyDataflowService {}
 impl DataflowService for MyDataflowService {
     
     type GetCollectionStream = tokio_stream::Iter<std::vec::IntoIter<Result<GetCollectionResponse, tonic::Status>>>;
+
+    async fn save_to_csv(
+        &self,
+        request: Request<SaveToCsvRequest>,
+    ) -> Result<Response<()>, Status> {
+        println!("Got a request: {:?}", request);
+        let req = request.into_inner();
+        let collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
+        if let Some(vec) = collections.get(&req.collection_name) {
+            let mut wtr = csv::Writer::from_path(req.file_path).map_err(|e| {
+                eprintln!("Failed to create CSV writer: {:?}", e);
+                Status::internal("Failed to create CSV writer")
+            })?;
+            // TODO: write real header
+            wtr.write_record(&["field"]).map_err(|e| {
+                eprintln!("Failed to write field to CSV: {:?}", e);
+                Status::internal("Failed to write field to CSV")
+            })?;
+            for row in vec {
+                wtr.write_record(&[row.to_string()]).map_err(|e| {
+                    eprintln!("Failed to write record to CSV: {:?}", e);
+                    Status::internal("Failed to write record to CSV")
+                })?;
+            }
+            wtr.flush().map_err(|e| {
+                eprintln!("Failed to flush CSV writer: {:?}", e);
+                Status::internal("Failed to flush CSV writer")
+            })?;
+        } else {
+            return Err(Status::not_found("Collection not found"));
+        }
+
+        let reply: () = ();
+        Ok(Response::new(reply))
+    }
+
+    async fn load_from_csv(
+        &self,
+        request: Request<LoadFromCsvRequest>,
+    ) -> Result<Response<()>, Status> {
+        println!("Got a request: {:?}", request);
+        let req = request.into_inner();
+        let mut collections = match COLLECTIONS.lock() {
+            Ok(lock) => lock,
+            Err(poisoned) => {
+                eprintln!("Mutex was poisoned: {:?}", poisoned);
+                poisoned.into_inner() // This will give you access to the inner data.
+            }
+        };
+        if collections.contains_key(&req.collection_name) {
+            return Err(Status::already_exists("Collection already exists"));
+        }
+        let mut rdr = csv::Reader::from_path(req.file_path).map_err(|e| {
+            eprintln!("Failed to create CSV reader: {:?}", e);
+            Status::internal("Failed to create CSV reader")
+        })?;
+        let mut vec = Vec::new();
+        for result in rdr.records() {
+            let record = result.map_err(|e| {
+                eprintln!("Failed to read record from CSV: {:?}", e);
+                Status::internal("Failed to read record from CSV")
+            })?;
+            let row: u64 = record[0].parse().map_err(|e| {
+                eprintln!("Failed to parse record from CSV: {:?}", e);
+                Status::internal("Failed to parse record from CSV")
+            })?;
+            vec.push(row);
+        }
+        collections.insert(req.collection_name, vec);
+
+        let reply: () = ();
+        Ok(Response::new(reply))
+    }   
 
     async fn get_collection(
         &self,

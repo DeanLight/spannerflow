@@ -121,7 +121,6 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
     async def RunIEFunction(
         self, request: dataflow_pb2.RunIEFunctionRequest, context  # type: ignore
     ) -> AsyncGenerator[dataflow_pb2.RunIEFunctionResponse, None]:  # type: ignore
-        # Here you would implement your logic for running the IE function
         collection_name = request.collection_name
         function_name = request.function_name
         func = _IE_FUNCTIONS.get(function_name)
@@ -180,5 +179,5 @@ async def serve() -> None:
 
 
 if __name__ == "__main__":
-    # asyncio.run(serve())
     build_so()
+    asyncio.run(serve())

@@ -25,6 +25,18 @@ service DataflowService {
     rpc GetCollections (google.protobuf.Empty) returns (GetCollectionsResponse);
     rpc GetCollection (GetCollectionRequest) returns (stream GetCollectionResponse);
     rpc RunDataflow (RunDataflowRequest) returns (google.protobuf.Empty);
+    rpc LoadFromCSV (LoadFromCSVRequest) returns (google.protobuf.Empty);
+    rpc SaveToCSV (SaveToCSVRequest) returns (google.protobuf.Empty);
+}
+
+message LoadFromCSVRequest {
+    string collection_name = 1;
+    string file_path = 2;
+}
+
+message SaveToCSVRequest {
+    string collection_name = 1;
+    string file_path = 2;
 }
 
 message GetCollectionRequest {

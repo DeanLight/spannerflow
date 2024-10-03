@@ -5,7 +5,7 @@ edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
-path = "src/{{rust_file_name }}"
+path = "src/{{ rust_file_name }}"
 
 [dependencies]
 {% for dependency in dependencies %}
