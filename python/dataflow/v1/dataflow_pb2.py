@@ -6,7 +6,7 @@
 """Generated protocol buffer code."""
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
-from google.protobuf import runtime_version as _runtime_version  # type: ignore
+from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
 _runtime_version.ValidateProtobufRuntimeVersion(
@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1a\x64\x61taflow/v1/dataflow.proto\x12\x0b\x64\x61taflow.v1\x1a\x1bgoogle/protobuf/empty.proto\"F\n\x14RunIEFunctionRequest\x12\x15\n\rfunction_name\x18\x01 \x01(\t\x12\x17\n\x0f\x63ollection_name\x18\x02 \x01(\t\"$\n\x15RunIEFunctionResponse\x12\x0b\n\x03row\x18\x01 \x01(\t\"/\n\x14GetCollectionRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\"$\n\x15GetCollectionResponse\x12\x0b\n\x03row\x18\x01 \x01(\t\"5\n\rAddRowRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\x12\x0b\n\x03row\x18\x02 \x01(\t\"8\n\x10\x44\x65leteRowRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\x12\x0b\n\x03row\x18\x02 \x01(\t\"?\n\x14\x41\x64\x64\x43ollectionRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\x12\x0e\n\x06schema\x18\x02 \x01(\t\"2\n\x16GetCollectionsResponse\x12\x18\n\x10\x63ollection_names\x18\x01 \x03(\t\"2\n\x17\x44\x65leteCollectionRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\"U\n\x12RunDataflowRequest\x12\x0f\n\x07so_path\x18\x01 \x01(\t\x12\x0f\n\x07\x66n_name\x18\x02 \x01(\t\x12\x1d\n\x15input_collection_name\x18\x03 \x01(\t2m\n\x11IEFunctionService\x12X\n\rRunIEFunction\x12!.dataflow.v1.RunIEFunctionRequest\x1a\".dataflow.v1.RunIEFunctionResponse0\x01\x32\xa2\x04\n\x0f\x44\x61taflowService\x12<\n\x06\x41\x64\x64Row\x12\x1a.dataflow.v1.AddRowRequest\x1a\x16.google.protobuf.Empty\x12\x42\n\tDeleteRow\x12\x1d.dataflow.v1.DeleteRowRequest\x1a\x16.google.protobuf.Empty\x12J\n\rAddCollection\x12!.dataflow.v1.AddCollectionRequest\x1a\x16.google.protobuf.Empty\x12P\n\x10\x44\x65leteCollection\x12$.dataflow.v1.DeleteCollectionRequest\x1a\x16.google.protobuf.Empty\x12M\n\x0eGetCollections\x12\x16.google.protobuf.Empty\x1a#.dataflow.v1.GetCollectionsResponse\x12X\n\rGetCollection\x12!.dataflow.v1.GetCollectionRequest\x1a\".dataflow.v1.GetCollectionResponse0\x01\x12\x46\n\x0bRunDataflow\x12\x1f.dataflow.v1.RunDataflowRequest\x1a\x16.google.protobuf.Emptyb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1a\x64\x61taflow/v1/dataflow.proto\x12\x0b\x64\x61taflow.v1\x1a\x1bgoogle/protobuf/empty.proto\"F\n\x14RunIEFunctionRequest\x12\x15\n\rfunction_name\x18\x01 \x01(\t\x12\x17\n\x0f\x63ollection_name\x18\x02 \x01(\t\"$\n\x15RunIEFunctionResponse\x12\x0b\n\x03row\x18\x01 \x03(\t\"@\n\x12LoadFromCSVRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\x12\x11\n\tfile_path\x18\x02 \x01(\t\">\n\x10SaveToCSVRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\x12\x11\n\tfile_path\x18\x02 \x01(\t\"/\n\x14GetCollectionRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\"$\n\x15GetCollectionResponse\x12\x0b\n\x03row\x18\x01 \x03(\t\"5\n\rAddRowRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\x12\x0b\n\x03row\x18\x02 \x03(\t\"8\n\x10\x44\x65leteRowRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\x12\x0b\n\x03row\x18\x02 \x03(\t\"?\n\x14\x41\x64\x64\x43ollectionRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\x12\x0e\n\x06schema\x18\x02 \x01(\t\"2\n\x16GetCollectionsResponse\x12\x18\n\x10\x63ollection_names\x18\x01 \x03(\t\"2\n\x17\x44\x65leteCollectionRequest\x12\x17\n\x0f\x63ollection_name\x18\x01 \x01(\t\"U\n\x12RunDataflowRequest\x12\x0f\n\x07so_path\x18\x01 \x01(\t\x12\x0f\n\x07\x66n_name\x18\x02 \x01(\t\x12\x1d\n\x15input_collection_name\x18\x03 \x01(\t2m\n\x11IEFunctionService\x12X\n\rRunIEFunction\x12!.dataflow.v1.RunIEFunctionRequest\x1a\".dataflow.v1.RunIEFunctionResponse0\x01\x32\xae\x05\n\x0f\x44\x61taflowService\x12<\n\x06\x41\x64\x64Row\x12\x1a.dataflow.v1.AddRowRequest\x1a\x16.google.protobuf.Empty\x12\x42\n\tDeleteRow\x12\x1d.dataflow.v1.DeleteRowRequest\x1a\x16.google.protobuf.Empty\x12J\n\rAddCollection\x12!.dataflow.v1.AddCollectionRequest\x1a\x16.google.protobuf.Empty\x12P\n\x10\x44\x65leteCollection\x12$.dataflow.v1.DeleteCollectionRequest\x1a\x16.google.protobuf.Empty\x12M\n\x0eGetCollections\x12\x16.google.protobuf.Empty\x1a#.dataflow.v1.GetCollectionsResponse\x12X\n\rGetCollection\x12!.dataflow.v1.GetCollectionRequest\x1a\".dataflow.v1.GetCollectionResponse0\x01\x12\x46\n\x0bRunDataflow\x12\x1f.dataflow.v1.RunDataflowRequest\x1a\x16.google.protobuf.Empty\x12\x46\n\x0bLoadFromCSV\x12\x1f.dataflow.v1.LoadFromCSVRequest\x1a\x16.google.protobuf.Empty\x12\x42\n\tSaveToCSV\x12\x1d.dataflow.v1.SaveToCSVRequest\x1a\x16.google.protobuf.Emptyb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,24 +36,28 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_RUNIEFUNCTIONREQUEST']._serialized_end=142
   _globals['_RUNIEFUNCTIONRESPONSE']._serialized_start=144
   _globals['_RUNIEFUNCTIONRESPONSE']._serialized_end=180
-  _globals['_GETCOLLECTIONREQUEST']._serialized_start=182
-  _globals['_GETCOLLECTIONREQUEST']._serialized_end=229
-  _globals['_GETCOLLECTIONRESPONSE']._serialized_start=231
-  _globals['_GETCOLLECTIONRESPONSE']._serialized_end=267
-  _globals['_ADDROWREQUEST']._serialized_start=269
-  _globals['_ADDROWREQUEST']._serialized_end=322
-  _globals['_DELETEROWREQUEST']._serialized_start=324
-  _globals['_DELETEROWREQUEST']._serialized_end=380
-  _globals['_ADDCOLLECTIONREQUEST']._serialized_start=382
-  _globals['_ADDCOLLECTIONREQUEST']._serialized_end=445
-  _globals['_GETCOLLECTIONSRESPONSE']._serialized_start=447
-  _globals['_GETCOLLECTIONSRESPONSE']._serialized_end=497
-  _globals['_DELETECOLLECTIONREQUEST']._serialized_start=499
-  _globals['_DELETECOLLECTIONREQUEST']._serialized_end=549
-  _globals['_RUNDATAFLOWREQUEST']._serialized_start=551
-  _globals['_RUNDATAFLOWREQUEST']._serialized_end=636
-  _globals['_IEFUNCTIONSERVICE']._serialized_start=638
-  _globals['_IEFUNCTIONSERVICE']._serialized_end=747
-  _globals['_DATAFLOWSERVICE']._serialized_start=750
-  _globals['_DATAFLOWSERVICE']._serialized_end=1296
+  _globals['_LOADFROMCSVREQUEST']._serialized_start=182
+  _globals['_LOADFROMCSVREQUEST']._serialized_end=246
+  _globals['_SAVETOCSVREQUEST']._serialized_start=248
+  _globals['_SAVETOCSVREQUEST']._serialized_end=310
+  _globals['_GETCOLLECTIONREQUEST']._serialized_start=312
+  _globals['_GETCOLLECTIONREQUEST']._serialized_end=359
+  _globals['_GETCOLLECTIONRESPONSE']._serialized_start=361
+  _globals['_GETCOLLECTIONRESPONSE']._serialized_end=397
+  _globals['_ADDROWREQUEST']._serialized_start=399
+  _globals['_ADDROWREQUEST']._serialized_end=452
+  _globals['_DELETEROWREQUEST']._serialized_start=454
+  _globals['_DELETEROWREQUEST']._serialized_end=510
+  _globals['_ADDCOLLECTIONREQUEST']._serialized_start=512
+  _globals['_ADDCOLLECTIONREQUEST']._serialized_end=575
+  _globals['_GETCOLLECTIONSRESPONSE']._serialized_start=577
+  _globals['_GETCOLLECTIONSRESPONSE']._serialized_end=627
+  _globals['_DELETECOLLECTIONREQUEST']._serialized_start=629
+  _globals['_DELETECOLLECTIONREQUEST']._serialized_end=679
+  _globals['_RUNDATAFLOWREQUEST']._serialized_start=681
+  _globals['_RUNDATAFLOWREQUEST']._serialized_end=766
+  _globals['_IEFUNCTIONSERVICE']._serialized_start=768
+  _globals['_IEFUNCTIONSERVICE']._serialized_end=877
+  _globals['_DATAFLOWSERVICE']._serialized_start=880
+  _globals['_DATAFLOWSERVICE']._serialized_end=1566
 # @@protoc_insertion_point(module_scope)

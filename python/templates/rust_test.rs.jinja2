@@ -5,10 +5,10 @@ use differential_dataflow::input::InputSession;
 use differential_dataflow::operators::*;
 
 #[no_mangle]
-pub extern "C" fn foo(rows: &mut Vec<u64>){
+pub extern "C" fn foo(rows: &mut Vec<Vec<String>>){
     for row in rows.iter_mut() {
-        *row *= 1000;
+        row.insert(1, "Modified".to_string()) ;
     }
-    rows.push(42);
-    rows.push(43);
+    rows.push(vec!["42".to_string()]);
+    rows.push(vec!["43".to_string()]);
 }

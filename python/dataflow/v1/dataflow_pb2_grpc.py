@@ -143,6 +143,16 @@ class DataflowServiceStub(object):
                 request_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunDataflowRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.LoadFromCSV = channel.unary_unary(
+                '/dataflow.v1.DataflowService/LoadFromCSV',
+                request_serializer=dataflow_dot_v1_dot_dataflow__pb2.LoadFromCSVRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.SaveToCSV = channel.unary_unary(
+                '/dataflow.v1.DataflowService/SaveToCSV',
+                request_serializer=dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
 
 
 class DataflowServiceServicer(object):
@@ -190,6 +200,18 @@ class DataflowServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def LoadFromCSV(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SaveToCSV(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataflowServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -226,6 +248,16 @@ def add_DataflowServiceServicer_to_server(servicer, server):
             'RunDataflow': grpc.unary_unary_rpc_method_handler(
                     servicer.RunDataflow,
                     request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunDataflowRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'LoadFromCSV': grpc.unary_unary_rpc_method_handler(
+                    servicer.LoadFromCSV,
+                    request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.LoadFromCSVRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'SaveToCSV': grpc.unary_unary_rpc_method_handler(
+                    servicer.SaveToCSV,
+                    request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -417,6 +449,60 @@ class DataflowService(object):
             target,
             '/dataflow.v1.DataflowService/RunDataflow',
             dataflow_dot_v1_dot_dataflow__pb2.RunDataflowRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def LoadFromCSV(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/dataflow.v1.DataflowService/LoadFromCSV',
+            dataflow_dot_v1_dot_dataflow__pb2.LoadFromCSVRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SaveToCSV(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/dataflow.v1.DataflowService/SaveToCSV',
+            dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,

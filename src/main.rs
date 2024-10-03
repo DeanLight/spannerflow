@@ -19,7 +19,7 @@ pub mod dataflow {
 
 lazy_static::lazy_static! {
     // TODO: use real data structure
-    static ref COLLECTIONS: Mutex<HashMap<String, Vec<u64>>> = Mutex::new(HashMap::new());
+    static ref COLLECTIONS: Mutex<HashMap<String, Vec<Vec<String>>>> = Mutex::new(HashMap::new());
 }
 
 #[derive(Debug, Default)]
@@ -49,12 +49,12 @@ impl DataflowService for MyDataflowService {
                 Status::internal("Failed to create CSV writer")
             })?;
             // TODO: write real header
-            wtr.write_record(&["field"]).map_err(|e| {
+            wtr.write_record(&["field1", "field2"]).map_err(|e| {
                 eprintln!("Failed to write field to CSV: {:?}", e);
                 Status::internal("Failed to write field to CSV")
             })?;
             for row in vec {
-                wtr.write_record(&[row.to_string()]).map_err(|e| {
+                wtr.write_record(row).map_err(|e| {
                     eprintln!("Failed to write record to CSV: {:?}", e);
                     Status::internal("Failed to write record to CSV")
                 })?;
@@ -97,10 +97,7 @@ impl DataflowService for MyDataflowService {
                 eprintln!("Failed to read record from CSV: {:?}", e);
                 Status::internal("Failed to read record from CSV")
             })?;
-            let row: u64 = record[0].parse().map_err(|e| {
-                eprintln!("Failed to parse record from CSV: {:?}", e);
-                Status::internal("Failed to parse record from CSV")
-            })?;
+            let row: Vec<String> = record.iter().map(|s| s.to_string()).collect();
             vec.push(row);
         }
         collections.insert(req.collection_name, vec);
@@ -126,7 +123,7 @@ impl DataflowService for MyDataflowService {
         if let Some(vec) = collections.get(&req.collection_name) {
             // Create a vector of GetCollectionResponse
             let responses: Vec<Result<GetCollectionResponse, Status>> = vec.iter().cloned().map(|row| {
-                Ok(GetCollectionResponse { row: row.to_string() }) // Wrap in Ok
+                Ok(GetCollectionResponse { row: row }) // Wrap in Ok
             }).collect();
 
             // Create a stream from the vector items
@@ -178,8 +175,7 @@ impl DataflowService for MyDataflowService {
             return Err(Status::not_found("Collection not found"));
         }
         if let Some(vec) = collections.get_mut(&req.collection_name) {
-            // TODO: insert real value
-            vec.push(vec.len() as u64);
+            vec.push(req.row);
         };
         let reply: () = ();
 
@@ -205,8 +201,12 @@ impl DataflowService for MyDataflowService {
             return Err(Status::not_found("Collection not found"));
         }
         if let Some(vec) = collections.get_mut(&req.collection_name) {
-            // TODO: remove real value
-            vec.pop();
+            if let Some(pos) = vec.iter().position(|x| *x == req.row) {
+                vec.remove(pos);
+            }
+            else {
+                return Err(Status::not_found("row not found"));
+            }
         }
 
         let reply: () = ();
@@ -304,7 +304,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn run_dataflow_so(so_path: String, fn_name: String, collection: &mut Vec<u64>) -> Result<(), Status> {
+fn run_dataflow_so(so_path: String, fn_name: String, collection: &mut Vec<Vec<String>>) -> Result<(), Status> {
     // Load and use the shared library
     unsafe {
         let lib = Library::new(&so_path).map_err(|e| {
@@ -312,7 +312,7 @@ fn run_dataflow_so(so_path: String, fn_name: String, collection: &mut Vec<u64>) 
             Status::not_found("Failed to load shared library")
         })?;
 
-        let function: Symbol<unsafe extern "C" fn(&mut Vec<u64>)> = lib.get(fn_name.as_bytes()).map_err(|e| {
+        let function: Symbol<unsafe extern "C" fn(&mut Vec<Vec<String>>)> = lib.get(fn_name.as_bytes()).map_err(|e| {
             eprintln!("Failed to get function {}: {:?}", fn_name, e);
             Status::not_found("Failed to get function from library")
         })?;
@@ -332,7 +332,7 @@ pub async fn run_ie_function(
     server_address: String,
     function_name: String,
     collection_name: String,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
     // Create a gRPC client
     let mut client = IeFunctionServiceClient::connect(server_address).await?;
 

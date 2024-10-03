@@ -14,7 +14,7 @@ message RunIEFunctionRequest {
 }
 
 message RunIEFunctionResponse {
-    string row = 1;
+    repeated string row = 1;
 }
 
 service DataflowService {
@@ -44,17 +44,17 @@ message GetCollectionRequest {
 }
 
 message GetCollectionResponse {
-    string row = 1;
+    repeated string row = 1;
 }
 
 message AddRowRequest {
     string collection_name = 1;
-    string row = 2;
+    repeated string row = 2;
 }
 
 message DeleteRowRequest {
     string collection_name = 1;
-    string row = 2;
+    repeated string row = 2;
 }
 
 message AddCollectionRequest {   
