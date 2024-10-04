@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::sync::Mutex;
 use csv;
 
@@ -416,7 +417,8 @@ impl DataflowService for MyDataflowService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "127.0.0.1:50051".parse()?;
+    let bind_ip = env::var("BIND_IP").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let addr = (bind_ip + ":50051").parse()?;
     let dataflow = MyDataflowService::default();
 
     Server::builder()
