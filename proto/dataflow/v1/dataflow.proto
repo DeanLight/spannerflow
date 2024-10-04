@@ -57,13 +57,26 @@ message DeleteRowRequest {
     repeated string row = 2;
 }
 
+enum DataType {
+    DATA_TYPE_UNSPECIFIED = 0;
+    DATA_TYPE_STRING = 1;
+    DATA_TYPE_INT = 2;
+    DATA_TYPE_FLOAT = 3;
+    DATA_TYPE_BOOL = 4;
+}
+
 message AddCollectionRequest {   
     string collection_name = 1;
-    string schema = 2;
+    repeated DataType schema = 2;
+}
+
+message Collection {
+    string name = 1;
+    repeated DataType schema = 2;
 }
 
 message GetCollectionsResponse {
-    repeated string collection_names = 1;
+    repeated Collection collections = 3;
 }
 
 message DeleteCollectionRequest {

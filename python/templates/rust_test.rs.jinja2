@@ -3,9 +3,16 @@ extern crate differential_dataflow;
 
 use differential_dataflow::input::InputSession;
 use differential_dataflow::operators::*;
+use dataflow::{*};
+
+
+pub mod dataflow {
+    // Include the generated file directly
+    include!(concat!(env!("OUT_DIR"), "/dataflow.v1.rs"));
+}
 
 #[no_mangle]
-pub extern "C" fn foo(rows: &mut Vec<Vec<String>>){
+pub extern "C" fn foo(schema: &mut Vec<dataflow::DataType>, rows: &mut Vec<Vec<String>>){
     for row in rows.iter_mut() {
         row.insert(1, "Modified".to_string()) ;
     }

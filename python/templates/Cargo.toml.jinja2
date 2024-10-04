@@ -12,4 +12,9 @@ path = "src/{{ rust_file_name }}"
 {{ dependency.name }} = "{{ dependency.version }}"
 {% endfor %}
 
+[build-dependencies]
+{% for dependency in build_dependencies %}
+{{ dependency.name }} = "{{ dependency.version }}"
+{% endfor %}
+
 [workspace]
