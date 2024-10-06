@@ -4,8 +4,9 @@
 import warnings
 
 import grpc
-from dataflow.v1 import dataflow_pb2 as dataflow_dot_v1_dot_dataflow__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+
+from spannerflow.dataflow.v1 import dataflow_pb2 as dataflow_dot_v1_dot_dataflow__pb2
 
 GRPC_GENERATED_VERSION = "1.66.2"
 GRPC_VERSION = grpc.__version__

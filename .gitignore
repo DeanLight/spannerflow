@@ -182,3 +182,4 @@ Cargo.lock
 /target
 generated_rust
 .DS_Store
+spannerflow/logs

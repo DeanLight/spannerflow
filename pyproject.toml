@@ -44,3 +44,10 @@ build-backend = "poetry.core.masonry.api"
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
+exclude = [
+    "spannerflow/dataflow/v1/dataflow_pb2.py",
+    "spannerflow/dataflow/v1/dataflow_pb2_grpc.py",
+]
+
+[tool.isort]
+profile = "black"
