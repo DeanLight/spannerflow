@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import subprocess
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -8,7 +9,6 @@ from typing import AsyncGenerator, Generator, Iterable
 
 import grpc
 import jinja2
-
 from dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
 
 _IE_FUNCTIONS = {}
@@ -41,7 +41,7 @@ class Config:
             {"name": "prost-build", "version": "0.13.3"},
         ]
     )
-    PROTO_DIR_PATH: Path = Path("../proto").absolute()
+    PROTO_DIR_PATH: Path = Path("./proto").absolute()
     PROTO_FILE_PATH: Path = PROTO_DIR_PATH.joinpath("dataflow", "v1", "dataflow.proto")
 
 
@@ -71,7 +71,7 @@ def register_function(func):
 ## Example Functions Start ##
 @register_function
 async def async_greet(
-    rows: AsyncGenerator[Iterable[str], None]
+    rows: AsyncGenerator[Iterable[str], None],
 ) -> AsyncGenerator[list[str], None]:
     async for row in rows:
         yield list(row) + ["Hello, World!"]
@@ -79,7 +79,7 @@ async def async_greet(
 
 @register_function
 def sync_greet(
-    rows: Generator[Iterable[str], None, None]
+    rows: Generator[Iterable[str], None, None],
 ) -> Generator[list[str], None, None]:
     for row in rows:
         yield list(row) + ["Hello, World!"]
@@ -140,23 +140,29 @@ def build_so() -> None:
     create_cargo_toml(cargo_file_name, timestamp)
     create_rust_file(timestamp)
     create_rust_build_file(config.PROTO_DIR_PATH, config.PROTO_FILE_PATH)
+    build_rust(config.GENERATED_RUST_PROJECT_PATH.joinpath(cargo_file_name).absolute())
+
+
+def build_rust(cargo_toml_path: Path) -> None:
     command = [
         "cargo",
         "build",
         "--release",
         "--manifest-path",
-        str(config.GENERATED_RUST_PROJECT_PATH.joinpath(cargo_file_name).absolute()),
+        str(cargo_toml_path),
     ]
-    print(command)
     subprocess.run(
         command,
-        cwd=str(config.GENERATED_RUST_PROJECT_PATH),
+        cwd=str(cargo_toml_path.parent),
+        check=True,
     )
 
 
 class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
     async def RunIEFunction(
-        self, request: dataflow_pb2.RunIEFunctionRequest, context  # type: ignore
+        self,
+        request: dataflow_pb2.RunIEFunctionRequest,
+        context,  # type: ignore
     ) -> AsyncGenerator[dataflow_pb2.RunIEFunctionResponse, None]:  # type: ignore
         collection_name = request.collection_name
         function_name = request.function_name
@@ -165,6 +171,7 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
             context.set_details("IE Function not found.")
             context.set_code(grpc.StatusCode.NOT_FOUND)
             return  # Return early after setting the error
+        # TODO: Add support for more function structures
         if inspect.isasyncgenfunction(func):
             async for row in func(get_collection_async(collection_name)):
                 yield dataflow_pb2.RunIEFunctionResponse(row=row)  # type: ignore
@@ -194,6 +201,11 @@ async def get_collection_async(collection_name):
             yield response.row
 
 
+def build_rust_server() -> None:
+    cargo_toml_path = Path(__file__).parent.joinpath("Cargo.toml")
+    build_rust(cargo_toml_path.absolute())
+
+
 async def serve() -> None:
     server = grpc.aio.server()
     dataflow_pb2_grpc.add_IEFunctionServiceServicer_to_server(
@@ -205,6 +217,25 @@ async def serve() -> None:
     await server.wait_for_termination()  # Keep the server running
 
 
+@contextmanager
+def run_rust_server_in_background() -> Generator[None, None, None]:
+    # TODO: handle port is already in use
+    server_path = (
+        Path(__file__)
+        .parent.joinpath("target", "release", "spannerflow_rust")
+        .absolute()
+    )
+    with open("process.log", "a") as log_file:
+        process = subprocess.Popen([str(server_path)], stdout=log_file, stderr=log_file)
+        try:
+            yield
+        finally:
+            process.terminate()
+            process.wait()
+
+
 if __name__ == "__main__":
+    build_rust_server()
     build_so()
-    asyncio.run(serve())
+    with run_rust_server_in_background():
+        asyncio.run(serve())

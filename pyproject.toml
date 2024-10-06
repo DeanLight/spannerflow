@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "spannerflow"
+version = "0.1.0"
+description = ""
+authors = ["Ofer Katz <ofer.katz@campus.technion.ac.il>"]
+readme = "README.md"
+packages = [
+    { include = "spannerflow", from = "." }
+]
+
+include = [
+    { path = "spannerflow/src", format = ["sdist", "wheel"] },
+    { path = "spannerflow/proto", format = ["sdist", "wheel"] },
+    { path = "spannerflow/templates", format = ["sdist", "wheel"] },
+    { path = "spannerflow/Cargo.toml", format = ["sdist", "wheel"] }
+]
+
+
+
+[tool.poetry.dependencies]
+python = "^3.12"
+grpcio = "^1.66.2"
+grpcio-tools = "^1.66.2"
+aiohttp = "^3.10.9"
+jinja2 = "^3.1.4"
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.0.0"
+isort = "^5.13.2"
+black = "^24.8.0"
+types-protobuf = "^5.28.0.20240924"
+ruff = "^0.6.9"
+mypy = "^1.11.2"
+maturin = "^1.7.4"
+pytest = "^8.3.3"
+pytest-benchmark = "^4.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

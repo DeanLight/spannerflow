@@ -17,5 +17,4 @@ jobs:
             git fetch -u origin ${{ github.head_ref }}:${{ github.head_ref }}
       - name: Running linter, checking breaking changes
         run: |
-          cd proto
           buf lint

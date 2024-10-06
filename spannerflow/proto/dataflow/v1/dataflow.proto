@@ -4,7 +4,6 @@ package dataflow.v1;
 import "google/protobuf/empty.proto";
 
 service IEFunctionService {
-    // maybe stream
     rpc RunIEFunction (RunIEFunctionRequest) returns (stream RunIEFunctionResponse);
 }
 
@@ -24,6 +23,7 @@ service DataflowService {
     rpc DeleteCollection (DeleteCollectionRequest) returns (google.protobuf.Empty);
     rpc GetCollections (google.protobuf.Empty) returns (GetCollectionsResponse);
     rpc GetCollection (GetCollectionRequest) returns (stream GetCollectionResponse);
+    //rpc RunDataflow (RunDataflowRequest) returns (stream RunDataflowResponse);
     rpc RunDataflow (RunDataflowRequest) returns (google.protobuf.Empty);
     rpc LoadFromCSV (LoadFromCSVRequest) returns (google.protobuf.Empty);
     rpc SaveToCSV (SaveToCSVRequest) returns (google.protobuf.Empty);
@@ -63,6 +63,7 @@ enum DataType {
     DATA_TYPE_INT = 2;
     DATA_TYPE_FLOAT = 3;
     DATA_TYPE_BOOL = 4;
+    // TODO: Handle generic types
 }
 
 message AddCollectionRequest {   
@@ -86,6 +87,11 @@ message DeleteCollectionRequest {
 message RunDataflowRequest {
     string so_path = 1;
     string fn_name = 2;
-    // maybe repeated ?
     string input_collection_name = 3;
+    string output_collection_name = 4;
+}
+
+
+message RunDataflowResponse {
+    repeated string row = 1;
 }
