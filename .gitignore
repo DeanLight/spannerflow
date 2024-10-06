@@ -183,3 +183,4 @@ Cargo.lock
 generated_rust
 .DS_Store
 spannerflow/logs
+protoc/
