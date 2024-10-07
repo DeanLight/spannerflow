@@ -22,11 +22,12 @@ class Config:
             {"name": "differential-dataflow", "version": "0.12.0"},
             {"name": "prost", "version": "0.13.3"},
             {"name": "prost-types", "version": "0.13.3"},
+            {"name": "tonic", "version": "0.12.3"},
         ]
     )
     RUST_BUILD_DEPEDENCIES: list[dict[str, str]] = field(
         default_factory=lambda: [
-            {"name": "prost-build", "version": "0.13.3"},
+            {"name": "tonic-build", "version": "0.12.3"},
         ]
     )
     PROTO_DIR_PATH: Path = Path("spannerflow").joinpath("proto").absolute()

@@ -10,7 +10,6 @@ use tonic::{transport::Server, Request, Response, Status};
 use tokio_stream::iter;
 
 use dataflow::dataflow_service_server::{DataflowService, DataflowServiceServer};
-use dataflow::ie_function_service_client::IeFunctionServiceClient;
 use dataflow::{*};
 
 
@@ -434,28 +433,4 @@ fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<String>>,
         std::mem::drop(lib);
         return Ok(output)
     }
-}
-
-pub async fn run_ie_function(
-    server_address: String,
-    function_name: String,
-    collection_name: String,
-) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
-    let mut client = IeFunctionServiceClient::connect(server_address).await?;
-
-    let request = RunIeFunctionRequest {
-        function_name,
-        collection_name,
-    };
-
-    let response = client.run_ie_function(Request::new(request)).await?;
-
-    let mut results = Vec::new();
-    let mut response_stream = response.into_inner();
-    
-    while let Some(response) = response_stream.message().await? {
-        results.push(response.row);
-    }
-
-    Ok(results)
 }

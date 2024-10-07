@@ -340,7 +340,7 @@ def build_rust_server() -> None:
 
 
 def run_rust_server_in_background() -> None:
-    def inner():
+    def inner() -> None:
         # TODO: handle port is already in use
         server_path = (
             Path(__file__)
