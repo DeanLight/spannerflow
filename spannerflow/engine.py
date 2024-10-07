@@ -67,16 +67,12 @@ class Engine:
         self,
         so_path: Path,
         fn_name: str,
-        input_collection_name: str,
-        output_collection_name: str | None = None,
     ) -> Generator[list[str], None, None]:
         with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.RunDataflowRequest(  # type: ignore
                 so_path=str(so_path),
                 fn_name=fn_name,
-                input_collection_name=input_collection_name,
-                output_collection_name=output_collection_name,
             )
             response_iterator = stub.RunDataflow(request)
 

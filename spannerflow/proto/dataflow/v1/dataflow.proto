@@ -86,8 +86,6 @@ message DeleteCollectionRequest {
 message RunDataflowRequest {
     string so_path = 1;
     string fn_name = 2;
-    string input_collection_name = 3;
-    string output_collection_name = 4;
 }
 
 

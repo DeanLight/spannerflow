@@ -383,28 +383,6 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<Self::RunDataflowStream>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
-        let collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
-        
-        let schemas = match SCHEMAS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
-
-        if !collections.contains_key(&req.input_collection_name) || !schemas.contains_key(&req.input_collection_name) {
-            return Err(Status::not_found("Collection not found"));
-        }
-        drop(collections);
-        drop(schemas);
-        
         
         if let Ok(vec) = run_dataflow_so(req.so_path, req.fn_name) {
             println!("Ran dataflow successfully {:?}", vec);
