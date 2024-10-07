@@ -64,7 +64,6 @@ def reduced_graph(graph):
         for node in cycle_nodes:
             for p_node in graph.predecessors(node):
                 if p_node not in cycle_nodes and p_node != anchor:
-                    print(p_node)
                     reduced.add_edge(p_node, anchor)
 
     return reduced, cycles

@@ -132,8 +132,8 @@ def get_join_code(
     )
 
     return f"""let {out_node_str} = {join1_str}.map(|{get_node_schema(graph, join1)}| ({common_schema}, {join1_uncommon_schema}))
-            .join(&{join2_str}.map(|{get_node_schema(graph, join2)}| ({common_schema}, {join2_uncommon_schema})))
-            .map(|({common_schema}, ({out_join1_uncommon_schema}, {out_join2_uncommon_schema}))| ({get_node_schema(graph, node)}));"""
+                        .join(&{join2_str}.map(|{get_node_schema(graph, join2)}| ({common_schema}, {join2_uncommon_schema})))
+                        .map(|({common_schema}, ({out_join1_uncommon_schema}, {out_join2_uncommon_schema}))| ({get_node_schema(graph, node)}));"""
 
 
 def get_union_code(
@@ -156,7 +156,7 @@ def get_union_code(
         prev_node2_str = f"node_{preds[1]}"
         if in_iterate and preds[1] == anchor:
             prev_node2_str = str(anchor)
-        return f"let {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
+        return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
     raise ValueError(
         "Union node has invalida number of predecessors: ", (len(preds), node)
     )

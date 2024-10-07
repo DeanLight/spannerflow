@@ -37,7 +37,7 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
         {% endfor %}
             worker.dataflow(|scope| {
             {% for node in top_sort %}
-                {{flow_code[node]}}{% endfor %}
+                {{ flow_code[node] }}{% endfor %}
                 let result = Arc::clone(&result); 
                 node_{{output_node}}.inspect(move |x| {
                     let cloned_x = x.clone();
