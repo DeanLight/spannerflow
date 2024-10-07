@@ -1,7 +1,10 @@
+import glob
 import os
 import platform
 import subprocess
+import tarfile
 import zipfile
+from pathlib import Path
 
 import requests
 
@@ -52,7 +55,7 @@ def install_protoc() -> None:
 
     # Download the file
     response = requests.get(url, stream=True)
-    zip_filename = "protoc.zip"
+    zip_filename = Path("protoc.zip").absolute()
     if response.status_code == 200:
         with open(zip_filename, "wb") as file:
             for chunk in response.iter_content(chunk_size=8192):
@@ -61,14 +64,50 @@ def install_protoc() -> None:
     else:
         print(f"Failed to download protoc. HTTP status code: {response.status_code}")
         return
-    extract_dir = "protoc"
+    extract_dir = Path("protoc").absolute()
     with zipfile.ZipFile(zip_filename, "r") as zip_ref:
         zip_ref.extractall(extract_dir)
     print(f"Extracted protoc files to {extract_dir}.")
 
-    os.remove(zip_filename)
+    zip_filename.unlink()
     print(f"Removed the zip file: {zip_filename}")
-    protoc_bin_path = os.path.abspath(os.path.join(extract_dir, "bin"))
-    protoc_path = os.path.abspath(os.path.join(protoc_bin_path, "protoc"))
-    os.chmod(protoc_path, 0o755)
-    os.environ["PATH"] = protoc_bin_path + os.pathsep + os.environ["PATH"]
+    protoc_bin_path = extract_dir.joinpath("bin")
+    protoc_path = protoc_bin_path.joinpath("protoc")
+    protoc_path.chmod(0o755)
+    os.environ["PATH"] = os.pathsep.join([str(protoc_bin_path), os.environ["PATH"]])
+
+
+def check_for_rust() -> bool:
+    try:
+        subprocess.run(["rustc", "--version"], check=True)
+        return True
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return False
+
+
+def install_rust():
+    if check_for_rust():
+        print("Rust is already installed.")
+        return
+
+    # TODO: find right operation_system_and_arch
+    operation_system_and_arch = "x86_64-unknown-linux-gnu"
+    url = f"https://static.rust-lang.org/dist/rust-1.81.0-{operation_system_and_arch}.tar.xz"
+    response = requests.get(url, stream=True)
+    tar_xz_filename = Path("rust.tar.xz").absolute()
+    if response.status_code == 200:
+        with open(tar_xz_filename, "wb") as file:
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
+        print(f"Downloaded Rust successfully from {url}.")
+    else:
+        print(f"Failed to download Rust. HTTP status code: {response.status_code}")
+        return
+    extract_dir = Path("rust").absolute()
+    with tarfile.open(tar_xz_filename, "r:xz") as tar:
+        tar.extractall(extract_dir)
+    print(f"Extracted Rust files to {extract_dir}.")
+    tar_xz_filename.unlink()
+    print(f"Removed the tar.xz file: {tar_xz_filename}")
+    dirs = glob.glob(f"{extract_dir}/*/*/bin")
+    os.environ["PATH"] = os.pathsep.join(dirs + [os.environ["PATH"]])
