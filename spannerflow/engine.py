@@ -78,10 +78,7 @@ class Engine:
                 input_collection_name=input_collection_name,
                 output_collection_name=output_collection_name,
             )
+            response_iterator = stub.RunDataflow(request)
 
-            stub.RunDataflow(request)
-            yield []
-            # response_iterator = stub.RunDataflow(request)
-
-            # for response in response_iterator:
-            #     yield response.row
+            for response in response_iterator:
+                yield response.row

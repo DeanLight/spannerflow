@@ -23,8 +23,7 @@ service DataflowService {
     rpc DeleteCollection (DeleteCollectionRequest) returns (google.protobuf.Empty);
     rpc GetCollections (google.protobuf.Empty) returns (GetCollectionsResponse);
     rpc GetCollection (GetCollectionRequest) returns (stream GetCollectionResponse);
-    //rpc RunDataflow (RunDataflowRequest) returns (stream RunDataflowResponse);
-    rpc RunDataflow (RunDataflowRequest) returns (google.protobuf.Empty);
+    rpc RunDataflow (RunDataflowRequest) returns (stream RunDataflowResponse);
     rpc LoadFromCSV (LoadFromCSVRequest) returns (google.protobuf.Empty);
     rpc SaveToCSV (SaveToCSVRequest) returns (google.protobuf.Empty);
 }

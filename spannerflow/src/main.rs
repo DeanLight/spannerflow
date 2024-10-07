@@ -65,7 +65,7 @@ fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool 
 impl DataflowService for MyDataflowService {
     
     type GetCollectionStream = tokio_stream::Iter<std::vec::IntoIter<Result<GetCollectionResponse, tonic::Status>>>;
-
+    type RunDataflowStream = tokio_stream::Iter<std::vec::IntoIter<Result<RunDataflowResponse, tonic::Status>>>;
     async fn save_to_csv(
         &self,
         request: Request<SaveToCsvRequest>,
@@ -380,7 +380,7 @@ impl DataflowService for MyDataflowService {
     async fn run_dataflow(
         &self,
         request: Request<RunDataflowRequest>,
-    ) -> Result<Response<()>, Status> {
+    ) -> Result<Response<Self::RunDataflowStream>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
         let collections = match COLLECTIONS.lock() {
@@ -404,14 +404,24 @@ impl DataflowService for MyDataflowService {
         }
         drop(collections);
         drop(schemas);
-        let result = run_dataflow_so(req.so_path, req.fn_name);
-        if let Err(status) = result {
-            return Err(status);
+        
+        
+        if let Ok(vec) = run_dataflow_so(req.so_path, req.fn_name) {
+            println!("Ran dataflow successfully {:?}", vec);
+            let responses: Vec<Result<RunDataflowResponse, Status>> = vec.iter().cloned().map(|row| {
+                Ok(RunDataflowResponse { row: row })
+            }).collect();
+        
+
+            let stream = iter(responses);
+
+            let response_stream = tonic::Response::new(stream);
+            Ok(response_stream)
+        }
+        else {
+            return Err(Status::internal("Failed to run dataflow"));
         }
 
-        let reply: () = ();
-
-        Ok(Response::new(reply))
     }
 }
 
@@ -429,7 +439,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn run_dataflow_so(so_path: String, fn_name: String) -> Result<(), Status> {
+fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<String>>, Status> {
     unsafe {
         let lib = Library::new(&so_path).map_err(|e| {
             eprintln!("Failed to load library from path {}: {:?}", so_path, e);
@@ -444,8 +454,8 @@ fn run_dataflow_so(so_path: String, fn_name: String) -> Result<(), Status> {
         let output: Vec<Vec<String>> = function(&*collections_guard);
         println!("{:?}", output);
         std::mem::drop(lib);
+        return Ok(output)
     }
-    Ok(())
 }
 
 pub async fn run_ie_function(
