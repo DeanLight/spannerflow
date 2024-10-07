@@ -13,6 +13,22 @@ class Engine:
     def __init__(self, config: Config):
         self.config = config
 
+    def save_to_csv(self, collection_name: str, file_path: Path) -> None:
+        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+            stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
+            request = dataflow_pb2.SaveToCSVRequest(  # type: ignore
+                collection_name=collection_name, file_path=str(file_path)
+            )
+            stub.SaveToCSV(request)
+
+    def load_from_csv(self, collection_name: str, file_path: Path) -> None:
+        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+            stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
+            request = dataflow_pb2.LoadFromCSVRequest(  # type: ignore
+                collection_name=collection_name, file_path=str(file_path)
+            )
+            stub.LoadFromCSV(request)
+
     def add_row(self, collection_name: str, row: list[str]) -> None:
         with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
