@@ -73,24 +73,30 @@ class equalColTheta:
         return self.col_pos_tuples == other.col_pos_tuples
 
 
-def get_input_scheme(node):
+def get_input_scheme(node: int | str) -> str:
     engine = Engine(config)
     collections = engine.get_collections()
-    types_list = [PYTHON_RUST_TYPES[str(x)] for x in collections[node]]
+    types_list = [PYTHON_RUST_TYPES[x] for x in collections[str(node)]]
     if len(types_list) > 1:
         return f"({', '.join(types_list)})"
     if len(types_list) == 1:
         return types_list[0]
+    raise ValueError("No schema found for node: ", node)
 
 
-def get_sources_data(graph):
+def get_sources_data(graph: nx.DiGraph) -> dict[str | int, dict[str, str | int]]:
     return {
         source: {"name": source, "scheme": get_input_scheme(source)}
         for source in find_sources(graph)
     }
 
 
-def get_join_code(graph, node, anchor=None, in_iterate=False):
+def get_join_code(
+    graph: nx.DiGraph,
+    node: str | int,
+    anchor: str | int | None = None,
+    in_iterate: bool = False,
+) -> str:
     prev_nodes = list(graph.pred[node])
     if len(prev_nodes) != 2:
         raise ValueError("Node is not 2-join: ", node)
@@ -101,7 +107,7 @@ def get_join_code(graph, node, anchor=None, in_iterate=False):
 
     if in_iterate:
         if node == anchor:
-            out_node_str = anchor
+            out_node_str = str(anchor)
         if join1 == anchor:
             join1_str = join1
         if join2 == anchor:
@@ -132,28 +138,41 @@ def get_join_code(graph, node, anchor=None, in_iterate=False):
             .map(|({common_schema}, ({out_join1_uncommon_schema}, {out_join2_uncommon_schema}))| ({get_node_schema(graph, node)}));"""
 
 
-def get_union_code(graph, node, anchor=None, in_iterate=False):
+def get_union_code(
+    graph: nx.DiGraph,
+    node: str | int,
+    anchor: str | int | None = None,
+    in_iterate: bool = False,
+) -> str:
     preds = list(graph.pred[node])
-    prev_node1_str = f"node_{preds[0]}"
+    prev_node1_str: int | str = f"node_{preds[0]}"
     node_str = f"node_{node}"
     if in_iterate:
         if preds[0] == anchor:
             prev_node1_str = anchor
         if node == anchor:
-            node_str = anchor
+            node_str = str(anchor)
     if len(preds) == 1:
         return f"let {node_str} = {prev_node1_str};"
     elif len(preds) == 2:
         prev_node2_str = f"node_{preds[1]}"
         if in_iterate and preds[1] == anchor:
-            prev_node2_str = anchor
+            prev_node2_str = str(anchor)
         return f"let {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
+    raise ValueError(
+        "Union node has invalida number of predecessors: ", (len(preds), node)
+    )
 
 
-def generate_code(graph, node, anchor=None, in_iterate=False):
+def generate_code(
+    graph: nx.DiGraph,
+    node: str | int,
+    anchor: str | int | None = None,
+    in_iterate: bool = False,
+) -> str:
     gr_node = graph.nodes[node]
     schema = get_node_schema(graph, node)
-    code = None
+    code = ""
     prev_nodes = list(graph.pred[node])
     if prev_nodes:
         prev_node_str = f"node_{prev_nodes[0]}"
@@ -161,9 +180,9 @@ def generate_code(graph, node, anchor=None, in_iterate=False):
     node_str = f"node_{node}"
     if in_iterate:
         if prev_nodes and prev_nodes[0] == anchor:
-            prev_node_str = anchor
+            prev_node_str = str(anchor)
         if node == anchor:
-            node_str = anchor
+            node_str = str(anchor)
 
     if gr_node["op"] == "get_rel":
         code = f"let {node_str} = input_{node}.to_collection(scope);"
@@ -177,7 +196,7 @@ def generate_code(graph, node, anchor=None, in_iterate=False):
         code = get_join_code(graph, node, anchor=anchor, in_iterate=in_iterate)
     elif gr_node["op"] == "select":
         theta = gr_node["theta"]
-        preds = ""
+        preds = []
         # TODO:
         if isinstance(theta, equalConstTheta):
             preds = [f"col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
@@ -191,7 +210,7 @@ def generate_code(graph, node, anchor=None, in_iterate=False):
     return code
 
 
-def generate_graph_code(graph):
+def generate_graph_code(graph: nx.DiGraph) -> dict[str | int, str]:
     flow_code = dict()
     template_loader = jinja2.FileSystemLoader(searchpath=config.TEMPLATES_PATH)
     template_env = jinja2.Environment(loader=template_loader)
@@ -224,7 +243,7 @@ def generate_graph_code(graph):
     return flow_code
 
 
-def get_output_data(graph):
+def get_output_data(graph: nx.DiGraph) -> tuple[str | int, int]:
     output = find_output(graph)
     return output, len(graph.nodes[output]["schema"])
 
