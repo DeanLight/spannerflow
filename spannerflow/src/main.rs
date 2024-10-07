@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::env;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use csv;
 
 
@@ -383,7 +383,7 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<()>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
-        let mut collections = match COLLECTIONS.lock() {
+        let collections = match COLLECTIONS.lock() {
             Ok(lock) => lock,
             Err(poisoned) => {
                 eprintln!("Mutex was poisoned: {:?}", poisoned);
@@ -391,7 +391,7 @@ impl DataflowService for MyDataflowService {
             }
         };
         
-        let mut schemas = match SCHEMAS.lock() {
+        let schemas = match SCHEMAS.lock() {
             Ok(lock) => lock,
             Err(poisoned) => {
                 eprintln!("Mutex was poisoned: {:?}", poisoned);
@@ -402,9 +402,9 @@ impl DataflowService for MyDataflowService {
         if !collections.contains_key(&req.input_collection_name) || !schemas.contains_key(&req.input_collection_name) {
             return Err(Status::not_found("Collection not found"));
         }
-        let schema = schemas.get_mut(&req.input_collection_name).unwrap();
-        let collection = collections.get_mut(&req.input_collection_name).unwrap();
-        let result = run_dataflow_so(req.so_path, req.fn_name, schema, collection);
+        drop(collections);
+        drop(schemas);
+        let result = run_dataflow_so(req.so_path, req.fn_name);
         if let Err(status) = result {
             return Err(status);
         }
@@ -429,19 +429,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn run_dataflow_so(so_path: String, fn_name: String, schema: &mut Vec<dataflow::DataType>, collection: &mut Vec<Vec<String>>) -> Result<(), Status> {
+fn run_dataflow_so(so_path: String, fn_name: String) -> Result<(), Status> {
     unsafe {
         let lib = Library::new(&so_path).map_err(|e| {
             eprintln!("Failed to load library from path {}: {:?}", so_path, e);
             Status::not_found("Failed to load shared library")
         })?;
 
-        let function: Symbol<unsafe extern "C" fn( &mut Vec<dataflow::DataType>, &mut Vec<Vec<String>>)> = lib.get(fn_name.as_bytes()).map_err(|e| {
+        let function: Symbol<unsafe extern "C" fn(&HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>> = lib.get(fn_name.as_bytes()).map_err(|e| {
             eprintln!("Failed to get function {}: {:?}", fn_name, e);
             Status::not_found("Failed to get function from library")
         })?;
+        println!("WTFFFFFFF");
+        let collections_guard: MutexGuard<HashMap<String, Vec<Vec<String>>>> = COLLECTIONS.lock().unwrap();
         
-        function(schema, collection);
+        println!("Collections1: {:?}", &*collections_guard);
+        let output: Vec<Vec<String>> = function(&*collections_guard);
+        println!("{:?}", output);
         std::mem::drop(lib);
     }
     Ok(())

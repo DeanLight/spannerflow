@@ -11,7 +11,7 @@ class Config:
     DATAFLOW_IP: str = "localhost"
     DATAFLOW_ADDRESS: str = f"{DATAFLOW_IP}:{DATAFLOW_PORT}"
     GENERATED_RUST_PROJECT_PATH: Path = Path("generated_rust")
-    TEMPLATES_PATH: Path = Path("templates")
+    TEMPLATES_PATH: Path = Path(__file__).parent.joinpath("templates")
     CARGO_TOML_TEMPLATE_NAME: str = "Cargo.toml.jinja2"
     RUST_FILE_TEMPLATE_NAME: str = "rust_test.rs.jinja2"
     RUST_BUILD_TEMPLATE_NAME: str = "build.rs.jinja2"
@@ -29,7 +29,7 @@ class Config:
             {"name": "prost-build", "version": "0.13.3"},
         ]
     )
-    PROTO_DIR_PATH: Path = Path("./proto").absolute()
+    PROTO_DIR_PATH: Path = Path("spannerflow").joinpath("proto").absolute()
     PROTO_FILE_PATH: Path = PROTO_DIR_PATH.joinpath("dataflow", "v1", "dataflow.proto")
     LOGS_DIR: Path = Path("logs")
     RUST_SERVER_LOG_PATH: Path = LOGS_DIR.joinpath("rust_server.log")
