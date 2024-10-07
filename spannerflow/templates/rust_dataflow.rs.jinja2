@@ -31,7 +31,7 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
         let output = Arc::new(Mutex::new(Vec::new()));
         let result = Arc::clone(&output);
 
-        timely::execute_from_args(std::env::args(), move |worker| {
+        let _ = timely::execute_from_args(std::env::args(), move |worker| {
         {% for key,value in sources.items() %}
             let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['scheme'] %} {{ element }} {% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
         {% endfor %}
