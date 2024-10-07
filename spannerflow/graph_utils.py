@@ -12,7 +12,7 @@ def find_output(graph: nx.DiGraph) -> str | int:
     return outputs[0]
 
 
-def change_node_key(G, old_key, new_key):
+def change_node_key(G: nx.DiGraph, old_key: str | int, new_key: str | int) -> None:
     # Add a new node with the new key, and copy the attributes of the old node
     G.add_node(new_key, **G.nodes[old_key])
 
@@ -29,7 +29,7 @@ def change_node_key(G, old_key, new_key):
     G.remove_node(old_key)
 
 
-def get_cycles(graph):
+def get_cycles(graph: nx.DiGraph) -> dict[str | int, nx.DiGraph]:
     cycles = nx.recursive_simple_cycles(graph)
     cycle_dicts = dict()
 
@@ -40,14 +40,15 @@ def get_cycles(graph):
     return cycle_dicts
 
 
-def find_anchor_of_cycle(graph, cycle):
+def find_anchor_of_cycle(graph: nx.DiGraph, cycle: nx.DiGraph) -> str | int:
     # TODO: Change to node with edge to egress node (outside of the circle)
     for node in cycle:
         if graph.nodes[node]["op"] == "union":
             return node
+    raise Exception("No anchor node found in the cycle")
 
 
-def reduced_graph(graph):
+def reduced_graph(graph: nx.DiGraph) -> tuple[nx.DiGraph, dict[str | int, nx.DiGraph]]:
     """Returned a reduced graph with the cycle nodes removed but the anchor node"""
     cycles = get_cycles(graph)
     reduced = graph.copy()
@@ -69,7 +70,7 @@ def reduced_graph(graph):
     return reduced, cycles
 
 
-def get_node_schema(graph, node):
+def get_node_schema(graph: nx.DiGraph, node: str | int) -> str:
     schema = graph.nodes[node]["schema"]
     if len(schema) > 1:
         return f"({', '.join(schema)})"
@@ -79,39 +80,30 @@ def get_node_schema(graph, node):
     return schema[0]
 
 
-def get_common_cols(graph, node1, node2):
+def get_common_cols(
+    graph: nx.DiGraph, node1: int | str, node2: int | str
+) -> list[int | str]:
     return list(set(graph.nodes[node1]["schema"]) & set(graph.nodes[node2]["schema"]))
 
 
-def get_diff_cols(graph, node1, node2):
-    return list(set(graph.nodes[node1]["schema"]) ^ set(graph.nodes[node2]["schema"]))
-
-
-def get_minus_cols(graph, node1, common_cols):
+def get_minus_cols(graph: nx.DiGraph, node1: str | int, common_cols) -> list[int | str]:
     return list(set(graph.nodes[node1]["schema"]) - set(common_cols))
 
 
-def find_egress_node(graph, cycle, anchor):
-    """find a node that the anchor has an edge to it but it is not part of the cycle"""
-    for node in graph.successors(anchor):
-        if node not in cycle.nodes:
-            return node
-
-
-def traverse_cycle(graph, cycle, anchor):
+def traverse_cycle(cycle: nx.DiGraph, anchor: str | int) -> list[str | int]:
     """create a list of nodes for traversing the cylce
     (a direct edge must exist between adjucent nodes in the list)
     The anchor node must be the last node in the list.
     """
     temp_node = anchor
-    cycle_order = []
+    cycle_order: list[int | str] = list()
     while len(cycle_order) < len(cycle):
         cycle_order += list(cycle.successors(temp_node))
         temp_node = cycle_order[-1]
     return cycle_order
 
 
-def find_ingress_nodes(graph, cycle, anchor=None):
+def find_ingress_nodes(graph: nx.DiGraph, cycle) -> list[int | str]:
     """returns all nodes that have an edge to the cycle that is not part of the cycle"""
     ingress_nodes = []
     for node in cycle:
@@ -123,8 +115,8 @@ def find_ingress_nodes(graph, cycle, anchor=None):
     return ingress_nodes
 
 
-def create_iter_graph(graph, cycle, anchor):
-    ingress = find_ingress_nodes(graph, cycle, anchor)
+def create_iter_graph(graph: nx.DiGraph, cycle, anchor) -> nx.DiGraph:
+    ingress = find_ingress_nodes(graph, cycle)
     iter_graph = graph.subgraph(list(cycle.nodes) + (ingress) + [anchor]).copy()
     change_node_key(iter_graph, anchor, f"iter_{anchor}")
     iter_graph.nodes[f"iter_{anchor}"]["anchor"] = True

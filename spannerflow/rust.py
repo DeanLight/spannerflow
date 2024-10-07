@@ -220,7 +220,7 @@ def generate_graph_code(graph: nx.DiGraph) -> dict[str | int, str]:
             # TODO: need to add mut to the var decleration
             anchor_code = generate_code(reduced, node)
             cycle_code = {}
-            cycle_order = traverse_cycle(graph, cycles[node], f"iter_{node}")
+            cycle_order = traverse_cycle(cycles[node], f"iter_{node}")
             for cycle_node in cycle_order:
                 cycle_code[cycle_node] = generate_code(
                     iter_graph, cycle_node, anchor=f"iter_{node}", in_iterate=True
@@ -228,7 +228,7 @@ def generate_graph_code(graph: nx.DiGraph) -> dict[str | int, str]:
             flow_code[node] = iterate_template.render(
                 {
                     "ingress_nodes": find_ingress_nodes(
-                        graph, list(cycles[node].nodes), node
+                        graph, list(cycles[node].nodes)
                     ),
                     "anchor": node,
                     "cycle_flow": cycle_order,
