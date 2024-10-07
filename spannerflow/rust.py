@@ -73,18 +73,16 @@ class equalColTheta:
         return self.col_pos_tuples == other.col_pos_tuples
 
 
-def get_input_scheme(node: int | str) -> str:
+def get_input_scheme(node: int | str) -> list[str]:
     engine = Engine(config)
     collections = engine.get_collections()
     types_list = [PYTHON_RUST_TYPES[x] for x in collections[str(node)]]
-    if len(types_list) > 1:
-        return f"({', '.join(types_list)})"
-    if len(types_list) == 1:
-        return types_list[0]
-    raise ValueError("No schema found for node: ", node)
+    return types_list
 
 
-def get_sources_data(graph: nx.DiGraph) -> dict[str | int, dict[str, str | int]]:
+def get_sources_data(
+    graph: nx.DiGraph,
+) -> dict[str | int, dict[str, str | int | list[str]]]:
     return {
         source: {"name": source, "scheme": get_input_scheme(source)}
         for source in find_sources(graph)

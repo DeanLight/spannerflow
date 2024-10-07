@@ -13,7 +13,7 @@ class Config:
     GENERATED_RUST_PROJECT_PATH: Path = Path("generated_rust")
     TEMPLATES_PATH: Path = Path(__file__).parent.joinpath("templates")
     CARGO_TOML_TEMPLATE_NAME: str = "Cargo.toml.jinja2"
-    RUST_FILE_TEMPLATE_NAME: str = "rust_test.rs.jinja2"
+    RUST_FILE_TEMPLATE_NAME: str = "rust_dataflow.rs.jinja2"
     RUST_BUILD_TEMPLATE_NAME: str = "build.rs.jinja2"
     RUST_PROJECT_NAME: str = "spannerflow"
     RUST_DEPENDENCIES: list[dict[str, str]] = field(

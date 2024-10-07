@@ -440,10 +440,7 @@ fn run_dataflow_so(so_path: String, fn_name: String) -> Result<(), Status> {
             eprintln!("Failed to get function {}: {:?}", fn_name, e);
             Status::not_found("Failed to get function from library")
         })?;
-        println!("WTFFFFFFF");
         let collections_guard: MutexGuard<HashMap<String, Vec<Vec<String>>>> = COLLECTIONS.lock().unwrap();
-        
-        println!("Collections1: {:?}", &*collections_guard);
         let output: Vec<Vec<String>> = function(&*collections_guard);
         println!("{:?}", output);
         std::mem::drop(lib);

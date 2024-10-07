@@ -1,6 +1,7 @@
 extern crate timely;
 extern crate differential_dataflow;
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use differential_dataflow::input::InputSession;
@@ -24,15 +25,15 @@ macro_rules! tuple_to_vec_string {
 
 #[no_mangle]
 pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>{
-    // TODO: extract relevant collections
-    if let Some(collection) = collections.get("Parent") {
-        let input = collection.clone();
+    {% for key,value in sources.items() %}
+        let collection_{{value['name']}} = collections.get("Parent").unwrap().clone();
+    {% endfor %}
         let output = Arc::new(Mutex::new(Vec::new()));
         let result = Arc::clone(&output);
 
         timely::execute_from_args(std::env::args(), move |worker| {
         {% for key,value in sources.items() %}
-            let mut input_{{value['name']}}: InputSession::<usize, {{ value['scheme'] }}, isize> = InputSession::new();
+            let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['scheme'] %} {{ element }} {% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
         {% endfor %}
             worker.dataflow(|scope| {
             {% for node in top_sort %}
@@ -45,11 +46,11 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
                     ));
                 });
             });
+            {% for key,value in sources.items() %}
+                for vec in &collection_{{value['name']}} {
+                    input_{{value['name']}}.insert(({% for element in value['scheme'] %} vec[{{loop.index0}}].parse::<{{element}}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
+                }
+            {% endfor %}
         });
         return output.lock().unwrap().clone();
-    }
-    else {
-        eprintln!("Error: Collection Parent not found.");
-        return Vec::new();
-    }
 }
