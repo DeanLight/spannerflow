@@ -37,7 +37,6 @@ ruff = "^0.6.9"
 mypy = "^1.11.2"
 maturin = "^1.7.4"
 pytest = "^8.3.3"
-pytest-benchmark = "^4.0.0"
 
 
 [build-system]

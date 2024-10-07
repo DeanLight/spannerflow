@@ -35,3 +35,12 @@ repos:
     hooks:
       - id: buf-lint
         args: [spannerflow/proto/dataflow/v1/dataflow.proto]
+
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-check
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
