@@ -26,7 +26,7 @@ def install_protoc() -> None:
     operation_systems = {"Linux": "linux", "Darwin": "osx", "Windows": "win"}
 
     # Mapping of platform.machine() to architecture name in the download URL
-    architecture = {
+    architectures = {
         "s390x": "s390_64",
         "aarch64": "aarch_64",
         "arm64": "aarch_64",
@@ -38,9 +38,9 @@ def install_protoc() -> None:
     }
 
     operation_system = operation_systems.get(platform.system(), None)
-    arch = architecture.get(platform.machine(), None)
+    arch = architectures.get(platform.machine(), None)
 
-    if not os or not arch:
+    if not operation_system or not arch:
         print("Unsupported operating system or architecture.")
         return
 
@@ -49,20 +49,13 @@ def install_protoc() -> None:
         operation_system_and_arch = f"{arch}"
     else:
         # For other systems, the naming convention includes both OS and architecture
-        operation_system_and_arch = f"{operation_system}-{arch}"
+        operation_system_and_arch = f"{arch}-{operation_system}"
 
     url = f"https://github.com/protocolbuffers/protobuf/releases/download/v28.2/protoc-28.2-{operation_system_and_arch}.zip"
 
-    # Download the file
-    response = requests.get(url, stream=True)
     zip_filename = Path("protoc.zip").absolute()
-    if response.status_code == 200:
-        with open(zip_filename, "wb") as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-        print(f"Downloaded protoc successfully from {url}.")
-    else:
-        print(f"Failed to download protoc. HTTP status code: {response.status_code}")
+    if not download_archive(url, zip_filename):
+        print(f"Failed to download protoc from {url}.")
         return
     extract_dir = Path("protoc").absolute()
     with zipfile.ZipFile(zip_filename, "r") as zip_ref:
@@ -75,6 +68,17 @@ def install_protoc() -> None:
     protoc_path = protoc_bin_path.joinpath("protoc")
     protoc_path.chmod(0o755)
     os.environ["PATH"] = os.pathsep.join([str(protoc_bin_path), os.environ["PATH"]])
+
+
+def download_archive(url: str, dest_file_path: Path) -> bool:
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(dest_file_path, "wb") as file:
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
+        return True
+    else:
+        return False
 
 
 def check_for_rust() -> bool:
@@ -90,19 +94,34 @@ def install_rust():
         print("Rust is already installed.")
         return
 
-    # TODO: find right operation_system_and_arch
-    operation_system_and_arch = "x86_64-unknown-linux-gnu"
-    url = f"https://static.rust-lang.org/dist/rust-1.81.0-{operation_system_and_arch}.tar.xz"
-    response = requests.get(url, stream=True)
-    tar_xz_filename = Path("rust.tar.xz").absolute()
-    if response.status_code == 200:
-        with open(tar_xz_filename, "wb") as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-        print(f"Downloaded Rust successfully from {url}.")
-    else:
-        print(f"Failed to download Rust. HTTP status code: {response.status_code}")
+    operation_systems = {
+        "Linux": "unknown-linux-gnu",
+        "Darwin": "apple-darwin",
+        "Windows": "pc-windows-gnu",
+    }
+
+    architectures = {
+        "s390x": "s390x",
+        "aarch64": "aarch64",
+        "arm64": "aarch64",
+        "x86_64": "x86_64",
+        "AMD64": "x86_64",
+    }
+
+    operation_system = operation_systems.get(platform.system(), None)
+    arch = architectures.get(platform.machine(), None)
+
+    if not operation_system or not arch:
+        print("Unsupported operating system or architecture.")
         return
+    operation_system_and_arch = f"{arch}-{operation_system}"
+    url = f"https://static.rust-lang.org/dist/rust-1.81.0-{operation_system_and_arch}.tar.xz"
+
+    tar_xz_filename = Path("rust.tar.xz").absolute()
+    if not download_archive(url, tar_xz_filename):
+        print(f"Failed to download Rust from {url}.")
+        return
+
     extract_dir = Path("rust").absolute()
     with tarfile.open(tar_xz_filename, "r:xz") as tar:
         tar.extractall(extract_dir)
