@@ -182,28 +182,33 @@ def generate_code(
         if node == anchor:
             node_str = str(anchor)
 
-    if gr_node["op"] == "get_rel":
-        code = f"let {node_str} = input_{node}.to_collection(scope);"
-    if gr_node["op"] == "rename":
-        code = f"let {node_str} = {prev_node_str}.map(|{schema}| {schema});"
-    elif gr_node["op"] == "project":
-        if prev_nodes:
-            prev_schema = get_node_schema(graph, prev_nodes[0])
-            code = f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {schema});"
-    elif gr_node["op"] == "join":
-        code = get_join_code(graph, node, anchor=anchor, in_iterate=in_iterate)
-    elif gr_node["op"] == "select":
-        theta = gr_node["theta"]
-        preds = []
-        # TODO:
-        if isinstance(theta, equalConstTheta):
-            preds = [f"col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
-        # TODO:
-        elif isinstance(theta, equalColTheta):
-            preds = [f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples]
-        code = f"let {node_str} = {prev_node_str}.filter(|&{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
-    elif gr_node["op"] == "union":
-        code = get_union_code(graph, node, in_iterate=in_iterate, anchor=anchor)
+    match gr_node["op"]:
+        case "get_rel":
+            code = f"let {node_str} = input_{node}.to_collection(scope);"
+        case "rename":
+            code = f"let {node_str} = {prev_node_str}.map(|{schema}| {schema});"
+        case "project":
+            if prev_nodes:
+                prev_schema = get_node_schema(graph, prev_nodes[0])
+                code = (
+                    f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {schema});"
+                )
+        case "join":
+            code = get_join_code(graph, node, anchor=anchor, in_iterate=in_iterate)
+        case "select":
+            theta = gr_node["theta"]
+            preds = []
+            # TODO:
+            if isinstance(theta, equalConstTheta):
+                preds = [f"col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
+            # TODO:
+            elif isinstance(theta, equalColTheta):
+                preds = [
+                    f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples
+                ]
+            code = f"let {node_str} = {prev_node_str}.filter(|&{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
+        case "union":
+            code = get_union_code(graph, node, in_iterate=in_iterate, anchor=anchor)
 
     return code
 
