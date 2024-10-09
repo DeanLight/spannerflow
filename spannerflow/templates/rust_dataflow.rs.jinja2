@@ -66,7 +66,7 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
 
         let _ = timely::execute_from_args(std::env::args(), move |worker| {
         {% for key,value in sources.items() %}
-            let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['scheme'] %} {{ element }} {% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
+            let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['schema'] %} {{ element }} {% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
         {% endfor %}
             worker.dataflow(|scope| {
             {% for node in top_sort %}
@@ -81,7 +81,7 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
             });
             {% for key,value in sources.items() %}
                 for vec in &collection_{{value['name']}} {
-                    input_{{value['name']}}.insert(({% for element in value['scheme'] %} vec[{{loop.index0}}].parse::<{{element}}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
+                    input_{{value['name']}}.insert(({% for element in value['schema'] %} vec[{{loop.index0}}].parse::<{{element}}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
                 }
             {% endfor %}
         });

@@ -73,7 +73,7 @@ class equalColTheta:
         return self.col_pos_tuples == other.col_pos_tuples
 
 
-def get_input_scheme(node: int | str) -> list[str]:
+def get_input_schema(node: int | str) -> list[str]:
     engine = Engine(config)
     collections = engine.get_collections()
     types_list = [PYTHON_RUST_TYPES[x] for x in collections[str(node)]]
@@ -84,7 +84,7 @@ def get_sources_data(
     graph: nx.DiGraph,
 ) -> dict[str | int, dict[str, str | int | list[str]]]:
     return {
-        source: {"name": source, "scheme": get_input_scheme(source)}
+        source: {"name": source, "schema": get_input_schema(source)}
         for source in find_sources(graph)
     }
 
@@ -276,7 +276,6 @@ def create_rust_file(timestamp: str, graph: nx.DiGraph) -> None:
     flow_code = generate_graph_code(graph)
     reduced, _ = reduced_graph(graph)
     output_node, output_vars = get_output_data(reduced)
-
     output_text = template.render(
         sources=get_sources_data(graph),
         flow_code=flow_code,
