@@ -71,13 +71,25 @@ class Engine:
             }
 
     def get_collection(self, collection_name) -> Generator[list[str], None, None]:
+        schema = self.get_collections()[collection_name]
         with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.GetCollectionRequest(collection_name=collection_name)  # type: ignore
             response_iterator = stub.GetCollection(request)
 
             for response in response_iterator:
-                yield response.row
+                row = list()
+                for col_type, value in zip(schema, response.row):
+                    match dataflow_pb2.DataType.Value(col_type):  # type: ignore
+                        case dataflow_pb2.DataType.DATA_TYPE_STRING:  # type: ignore
+                            row.append(value)  # alread a string
+                        case dataflow_pb2.DataType.DATA_TYPE_INT:  # type: ignore
+                            row.append(int(value))
+                        case dataflow_pb2.DataType.DATA_TYPE_FLOAT:  # type: ignore
+                            row.append(float(value))
+                        case dataflow_pb2.DataType.DATA_TYPE_BOOL:  # type: ignore
+                            row.append(bool(value))
+                yield row
 
     def run_dataflow(
         self,

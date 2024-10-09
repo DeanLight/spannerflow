@@ -59,7 +59,7 @@ pub async fn run_ie_function(
 #[no_mangle]
 pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>{
     {% for key,value in sources.items() %}
-        let collection_{{value['name']}} = collections.get("Parent").unwrap().clone();
+        let collection_{{ value['name'] }} = collections.get("{{ value['name'] }}").unwrap().clone();
     {% endfor %}
         let output = Arc::new(Mutex::new(Vec::new()));
         let result = Arc::clone(&output);
