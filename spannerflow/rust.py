@@ -303,6 +303,9 @@ def get_groupby_code(
     agg_by_cols = {
         i: agg_func for i, agg_func in enumerate(agg) if agg_func is not None
     }
+    if len(agg_by_cols.values()) > 1:
+        raise ValueError("Multiple aggregation functions are not supported")
+
     for agg_func_name in agg_by_cols.values():
         match agg_func_name:
             case "sum":
@@ -321,19 +324,61 @@ def get_groupby_code(
 
                 let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
                 """
-                return code
             case "count":
                 code = f"let {node_str} = {prev_node_str}.map(|{get_node_schema(graph, prev_nodes[0])}| ({", ".join([schema[i] for i in groupby_cols])})).count();"
-                return code
             case "max":
-                ...
+                code = f"""
+                let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
+                    let max: i32 = input.iter().map(|(val, _cnt)| **val as i32).max().unwrap();
+                    output.push((key.clone(), max));
+                }});
+                let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
+                    Rc::new(RefCell::new(InputSession::new()));
+
+                let {node_str}_input_temp_clone = Rc::clone(&{node_str}_input_temp);
+                {node_str}_temp.inspect(move |x| {{
+                    {node_str}_input_temp_clone.borrow_mut().insert((x.0.0.clone(), x.2.clone()));
+                }});
+
+                let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
+                """
             case "min":
-                ...
+                code = f"""
+                let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
+                    let min: i32 = input.iter().map(|(val, _cnt)| **val as i32).min().unwrap();
+                    output.push((key.clone(), min));
+                }});
+                let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
+                    Rc::new(RefCell::new(InputSession::new()));
+
+                let {node_str}_input_temp_clone = Rc::clone(&{node_str}_input_temp);
+                {node_str}_temp.inspect(move |x| {{
+                    {node_str}_input_temp_clone.borrow_mut().insert((x.0.0.clone(), x.2.clone()));
+                }});
+
+                let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
+                """
             case "avg":
-                ...
+                code = f"""
+                let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
+                     let sum: i32 = input.iter().map(|(val, cnt)| *val * (*cnt as i32)).sum();
+                    let count: isize = input.iter().map(|(_, cnt)| *cnt).sum();
+                    let avg = if count > 0 {{ sum / count as i32 }} else {{ 0 }};
+                    output.push((key.clone(), avg));
+                }});
+                let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
+                    Rc::new(RefCell::new(InputSession::new()));
+
+                let {node_str}_input_temp_clone = Rc::clone(&{node_str}_input_temp);
+                {node_str}_temp.inspect(move |x| {{
+                    {node_str}_input_temp_clone.borrow_mut().insert((x.0.0.clone(), x.2.clone()));
+                }});
+
+                let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
+                """
             case _:
                 raise ValueError(f"Unsupported aggregate function: {agg_func_name}")
-    raise NotImplementedError("Groupby operation is not supported yet")
+    return code
 
 
 def generate_graph_code(graph: nx.DiGraph) -> dict[str | int, str]:
