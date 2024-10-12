@@ -169,8 +169,73 @@ def generate_code(
     in_iterate: bool = False,
 ) -> str:
     gr_node = graph.nodes[node]
+    match gr_node["op"]:
+        case "get_rel":
+            code = get_get_rel_code(graph, node, anchor=anchor, in_iterate=in_iterate)
+        case "rename":
+            code = get_rename_code(graph, node, anchor=anchor, in_iterate=in_iterate)
+        case "project":
+            code = get_project_code(graph, node, anchor=anchor, in_iterate=in_iterate)
+        case "join":
+            code = get_join_code(graph, node, anchor=anchor, in_iterate=in_iterate)
+        case "select":
+            code = get_select_code(graph, node, anchor=anchor, in_iterate=in_iterate)
+        case "union":
+            code = get_union_code(graph, node, in_iterate=in_iterate, anchor=anchor)
+        case "groupby":
+            code = get_groupby_code(graph, node, anchor=anchor, in_iterate=in_iterate)
+        case _:
+            raise ValueError(f"Unsupported operation: {gr_node['op']}")
+
+    return code
+
+
+def get_project_code(
+    graph: nx.DiGraph,
+    node: str | int,
+    anchor: str | int | None = None,
+    in_iterate: bool = False,
+) -> str:
     schema = get_node_schema(graph, node)
-    code = ""
+    prev_nodes = list(graph.pred[node])
+    if prev_nodes:
+        prev_node_str = f"node_{prev_nodes[0]}"
+
+    node_str = f"node_{node}"
+    if in_iterate:
+        if prev_nodes and prev_nodes[0] == anchor:
+            prev_node_str = str(anchor)
+        if node == anchor:
+            node_str = str(anchor)
+    if prev_nodes:
+        prev_schema = get_node_schema(graph, prev_nodes[0])
+        code = f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {schema});"
+    else:
+        code = ""
+    return code
+
+
+def get_get_rel_code(
+    graph: nx.DiGraph,
+    node: str | int,
+    anchor: str | int | None = None,
+    in_iterate: bool = False,
+) -> str:
+    node_str = f"node_{node}"
+    if in_iterate:
+        if node == anchor:
+            node_str = str(anchor)
+    code = f"let {node_str} = input_{node}.to_collection(scope);"
+    return code
+
+
+def get_rename_code(
+    graph: nx.DiGraph,
+    node: str | int,
+    anchor: str | int | None = None,
+    in_iterate: bool = False,
+) -> str:
+    schema = get_node_schema(graph, node)
     prev_nodes = list(graph.pred[node])
     if prev_nodes:
         prev_node_str = f"node_{prev_nodes[0]}"
@@ -182,35 +247,93 @@ def generate_code(
         if node == anchor:
             node_str = str(anchor)
 
-    match gr_node["op"]:
-        case "get_rel":
-            code = f"let {node_str} = input_{node}.to_collection(scope);"
-        case "rename":
-            code = f"let {node_str} = {prev_node_str}.map(|{schema}| {schema});"
-        case "project":
-            if prev_nodes:
-                prev_schema = get_node_schema(graph, prev_nodes[0])
-                code = (
-                    f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {schema});"
-                )
-        case "join":
-            code = get_join_code(graph, node, anchor=anchor, in_iterate=in_iterate)
-        case "select":
-            theta = gr_node["theta"]
-            preds = []
-            # TODO:
-            if isinstance(theta, equalConstTheta):
-                preds = [f"col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
-            # TODO:
-            elif isinstance(theta, equalColTheta):
-                preds = [
-                    f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples
-                ]
-            code = f"let {node_str} = {prev_node_str}.filter(|&{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
-        case "union":
-            code = get_union_code(graph, node, in_iterate=in_iterate, anchor=anchor)
-
+    code = f"let {node_str} = {prev_node_str}.map(|{schema}| {schema});"
     return code
+
+
+def get_select_code(
+    graph: nx.DiGraph,
+    node: str | int,
+    anchor: str | int | None = None,
+    in_iterate: bool = False,
+) -> str:
+    gr_node = graph.nodes[node]
+    prev_nodes = list(graph.pred[node])
+    if prev_nodes:
+        prev_node_str = f"node_{prev_nodes[0]}"
+
+    node_str = f"node_{node}"
+    if in_iterate:
+        if prev_nodes and prev_nodes[0] == anchor:
+            prev_node_str = str(anchor)
+        if node == anchor:
+            node_str = str(anchor)
+    theta = gr_node["theta"]
+    preds = []
+    # TODO:
+    if isinstance(theta, equalConstTheta):
+        preds = [f"col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
+    # TODO:
+    elif isinstance(theta, equalColTheta):
+        preds = [f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples]
+    code = f"let {node_str} = {prev_node_str}.filter(|&{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
+    return code
+
+
+def get_groupby_code(
+    graph: nx.DiGraph,
+    node: str | int,
+    anchor: str | int | None = None,
+    in_iterate: bool = False,
+) -> str:
+    gr_node = graph.nodes[node]
+    prev_nodes = list(graph.pred[node])
+    if prev_nodes:
+        prev_node_str = f"node_{prev_nodes[0]}"
+
+    node_str = f"node_{node}"
+    if in_iterate:
+        if prev_nodes and prev_nodes[0] == anchor:
+            prev_node_str = str(anchor)
+        if node == anchor:
+            node_str = str(anchor)
+    agg = gr_node["agg"]
+    schema = gr_node["schema"]
+    groupby_cols = [i for i, agg_func in enumerate(agg) if agg_func is None]
+    agg_by_cols = {
+        i: agg_func for i, agg_func in enumerate(agg) if agg_func is not None
+    }
+    for agg_func_name in agg_by_cols.values():
+        match agg_func_name:
+            case "sum":
+                code = f"""
+                let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
+                    let sum: i32 = input.iter().map(|(val, _cnt)| *val).sum();
+                    output.push((key.clone(), sum));
+                }});
+                let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
+                    Rc::new(RefCell::new(InputSession::new()));
+
+                let {node_str}_input_temp_clone = Rc::clone(&{node_str}_input_temp);
+                {node_str}_temp.inspect(move |x| {{
+                    {node_str}_input_temp_clone.borrow_mut().insert((x.0.0.clone(), x.2.clone()));
+                }});
+
+                let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
+                """
+                return code
+            case "count":
+                code = f"let {node_str} = {prev_node_str}.map(|{get_node_schema(graph, prev_nodes[0])}| ({", ".join([schema[i] for i in groupby_cols])})).count();"
+                return code
+            case "max":
+                ...
+            case "min":
+                ...
+            case "avg":
+                ...
+            case _:
+                raise ValueError(f"Unsupported aggregate function: {agg_func_name}")
+    raise NotImplementedError("Groupby operation is not supported yet")
 
 
 def generate_graph_code(graph: nx.DiGraph) -> dict[str | int, str]:
