@@ -308,7 +308,7 @@ def get_groupby_code(
             case "sum":
                 code = f"""
                 let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
-                    let sum: i32 = input.iter().map(|(val, _cnt)| *val).sum();
+                    let sum: i32 = input.iter().map(|(val, cnt)| *val * (*cnt as i32)).sum();
                     output.push((key.clone(), sum));
                 }});
                 let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
