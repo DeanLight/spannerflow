@@ -89,6 +89,15 @@ def get_sources_data(
     }
 
 
+def get_col_schema(cols: list[str]) -> str:
+    if not cols:
+        return "0"
+    if len(cols) > 1:
+        return f"({', '.join(cols)})"
+    else:
+        return cols[0]
+
+
 def get_join_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -110,14 +119,6 @@ def get_join_code(
             join1_str = join1
         if join2 == anchor:
             join2_str = join2
-
-    def get_col_schema(cols):
-        if not cols:
-            return "0"
-        if len(cols) > 1:
-            return f"({','.join(common_cols)})"
-        else:
-            return cols[0]
 
     common_cols = get_common_cols(graph, join1, join2)
     common_schema = get_col_schema(common_cols)
@@ -299,85 +300,73 @@ def get_groupby_code(
             node_str = str(anchor)
     agg = gr_node["agg"]
     schema = gr_node["schema"]
-    groupby_cols = [i for i, agg_func in enumerate(agg) if agg_func is None]
+    groupby_cols = [schema[i] for i, agg_func in enumerate(agg) if agg_func is None]
     agg_by_cols = {
-        i: agg_func for i, agg_func in enumerate(agg) if agg_func is not None
+        schema[i]: {"agg_func": agg_func}
+        for i, agg_func in enumerate(agg)
+        if agg_func is not None
     }
+
+    agg_cols = list(agg_by_cols.keys())
+    agg_by_index = {}
+    for key, agg_func in agg_by_cols.items():
+        agg_func["index"] = agg_cols.index(key)
+        agg_by_index[agg_func["index"]] = {
+            "agg_func": agg_func["agg_func"],
+            "col_name": key,
+        }
+
+    multi_agg = False
     if len(agg_by_cols.values()) > 1:
-        raise ValueError("Multiple aggregation functions are not supported")
+        multi_agg = True
 
-    for agg_func_name in agg_by_cols.values():
-        match agg_func_name:
+    declares = []
+    agg_code = []
+    output = []
+    for col_name, agg_func in agg_by_cols.items():
+        agg_index = agg_func["index"]
+        agg_var = f"{agg_func['agg_func']}_{col_name}"
+        output.append(agg_var)
+        val = "val" if not multi_agg else f"val.{agg_index}"
+        match agg_func["agg_func"]:
             case "sum":
-                code = f"""
-                let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
-                    let sum: i32 = input.iter().map(|(val, cnt)| *val * (*cnt as i32)).sum();
-                    output.push((key.clone(), sum));
-                }});
-                let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
-                    Rc::new(RefCell::new(InputSession::new()));
-
-                let {node_str}_input_temp_clone = Rc::clone(&{node_str}_input_temp);
-                {node_str}_temp.inspect(move |x| {{
-                    {node_str}_input_temp_clone.borrow_mut().insert((x.0.0.clone(), x.2.clone()));
-                }});
-
-                let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
-                """
+                declares.append(f"let mut {agg_var}: i32 = 0;")
+                agg_code.append(f"{agg_var} += {val} * (*cnt as i32);")
             case "count":
-                code = f"let {node_str} = {prev_node_str}.map(|{get_node_schema(graph, prev_nodes[0])}| ({", ".join([schema[i] for i in groupby_cols])})).count();"
+                declares.append(f"let mut {agg_var}: i32 = 0;")
+                agg_code.append(f"{agg_var} += *cnt as i32;")
             case "max":
-                code = f"""
-                let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
-                    let max: i32 = input.iter().map(|(val, _cnt)| **val as i32).max().unwrap();
-                    output.push((key.clone(), max));
-                }});
-                let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
-                    Rc::new(RefCell::new(InputSession::new()));
-
-                let {node_str}_input_temp_clone = Rc::clone(&{node_str}_input_temp);
-                {node_str}_temp.inspect(move |x| {{
-                    {node_str}_input_temp_clone.borrow_mut().insert((x.0.0.clone(), x.2.clone()));
-                }});
-
-                let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
-                """
+                declares.append(f"let mut {agg_var}: i32 = i32::MIN;")
+                agg_code.append(f"{agg_var} = std::cmp::max({agg_var}, {val});")
             case "min":
-                code = f"""
-                let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
-                    let min: i32 = input.iter().map(|(val, _cnt)| **val as i32).min().unwrap();
-                    output.push((key.clone(), min));
-                }});
-                let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
-                    Rc::new(RefCell::new(InputSession::new()));
-
-                let {node_str}_input_temp_clone = Rc::clone(&{node_str}_input_temp);
-                {node_str}_temp.inspect(move |x| {{
-                    {node_str}_input_temp_clone.borrow_mut().insert((x.0.0.clone(), x.2.clone()));
-                }});
-
-                let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
-                """
+                declares.append(f"let mut {agg_var}: i32 = i32::MAX;")
+                agg_code.append(f"{agg_var} = std::cmp::min({agg_var}, {val});")
             case "avg":
-                code = f"""
-                let {node_str}_temp = {prev_node_str}.reduce(|key, input, output| {{
-                     let sum: i32 = input.iter().map(|(val, cnt)| *val * (*cnt as i32)).sum();
-                    let count: isize = input.iter().map(|(_, cnt)| *cnt).sum();
-                    let avg = if count > 0 {{ sum / count as i32 }} else {{ 0 }};
-                    output.push((key.clone(), avg));
-                }});
-                let {node_str}_input_temp: Rc<RefCell<InputSession<usize, (String, i32), isize>>> =
-                    Rc::new(RefCell::new(InputSession::new()));
-
-                let {node_str}_input_temp_clone = Rc::clone(&{node_str}_input_temp);
-                {node_str}_temp.inspect(move |x| {{
-                    {node_str}_input_temp_clone.borrow_mut().insert((x.0.0.clone(), x.2.clone()));
-                }});
-
-                let {node_str} = {node_str}_input_temp.borrow_mut().to_collection(scope);
-                """
+                declares.append(f"let mut {agg_var}: (i32, i32) = (0, 0);")
+                agg_code.append(f"{agg_var}.0 += {val} * (*cnt as i32);")
+                agg_code.append(f"{agg_var}.1 += *cnt as i32;")
             case _:
-                raise ValueError(f"Unsupported aggregate function: {agg_func_name}")
+                raise ValueError(
+                    f"Unsupported aggregate function: {agg_func['agg_func']}"
+                )
+
+    template_loader = jinja2.FileSystemLoader(searchpath=config.TEMPLATES_PATH)
+    template_env = jinja2.Environment(loader=template_loader)
+    agg_template = template_env.get_template("aggregate.rs.jinja2")
+
+    code = agg_template.render(
+        output_node=node_str,
+        prev_node=prev_node_str,
+        in_schema=get_col_schema(schema),
+        groupby_schema=get_col_schema(groupby_cols),
+        groupby_len=len(groupby_cols),
+        agg_len=len(agg_cols),
+        agg_schema=get_col_schema(agg_cols),
+        agg_decleration=declares,
+        agg_list=agg_code,
+        output_tuple=get_col_schema(output),
+        agg_by_index=agg_by_index,
+    )
     return code
 
 

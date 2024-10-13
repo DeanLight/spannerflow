@@ -105,4 +105,4 @@ class Engine:
             response_iterator = stub.RunDataflow(request)
 
             for response in response_iterator:
-                yield response.row
+                yield [str(item) for item in response.row]

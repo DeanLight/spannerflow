@@ -50,6 +50,7 @@ def find_anchor_of_cycle(graph: nx.DiGraph, cycle: nx.DiGraph) -> str | int:
 
 def reduced_graph(graph: nx.DiGraph) -> tuple[nx.DiGraph, dict[str | int, nx.DiGraph]]:
     """Returned a reduced graph with the cycle nodes removed but the anchor node"""
+    # TODO: Handle more than one cycle
     cycles = get_cycles(graph)
     reduced = graph.copy()
 
@@ -80,13 +81,11 @@ def get_node_schema(graph: nx.DiGraph, node: str | int) -> str:
     return schema[0]
 
 
-def get_common_cols(
-    graph: nx.DiGraph, node1: int | str, node2: int | str
-) -> list[int | str]:
+def get_common_cols(graph: nx.DiGraph, node1: int | str, node2: int | str) -> list[str]:
     return list(set(graph.nodes[node1]["schema"]) & set(graph.nodes[node2]["schema"]))
 
 
-def get_minus_cols(graph: nx.DiGraph, node1: str | int, common_cols) -> list[int | str]:
+def get_minus_cols(graph: nx.DiGraph, node1: str | int, common_cols) -> list[str]:
     return list(set(graph.nodes[node1]["schema"]) - set(common_cols))
 
 
