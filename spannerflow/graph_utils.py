@@ -50,7 +50,6 @@ def find_anchor_of_cycle(graph: nx.DiGraph, cycle: nx.DiGraph) -> str | int:
 
 def reduced_graph(graph: nx.DiGraph) -> tuple[nx.DiGraph, dict[str | int, nx.DiGraph]]:
     """Returned a reduced graph with the cycle nodes removed but the anchor node"""
-    # TODO: Handle more than one cycle
     cycles = get_cycles(graph)
     reduced = graph.copy()
 

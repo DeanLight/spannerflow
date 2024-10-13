@@ -379,7 +379,6 @@ def generate_graph_code(graph: nx.DiGraph) -> dict[str | int, str]:
     for node in list(nx.topological_sort(reduced)):
         if node in cycles.keys():
             iter_graph = create_iter_graph(graph, cycles[node], node)
-            # TODO: need to add mut to the var decleration
             anchor_code = generate_code(reduced, node)
             cycle_code = {}
             cycle_order = traverse_cycle(cycles[node], f"iter_{node}")
