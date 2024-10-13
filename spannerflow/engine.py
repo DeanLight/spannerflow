@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
 import grpc
 from google.protobuf import empty_pb2
@@ -29,19 +29,19 @@ class Engine:
             )
             stub.LoadFromCSV(request)
 
-    def add_row(self, collection_name: str, row: list[str]) -> None:
+    def add_row(self, collection_name: str, row: list[Any]) -> None:
         with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.AddRowRequest(  # type: ignore
-                collection_name=collection_name, row=row
+                collection_name=collection_name, row=[str(item) for item in row]
             )
             stub.AddRow(request)
 
-    def delete_row(self, collection_name: str, row: list[str]) -> None:
+    def delete_row(self, collection_name: str, row: list[Any]) -> None:
         with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.DeleteRowRequest(  # type: ignore
-                collection_name=collection_name, row=row
+                collection_name=collection_name, row=[str(item) for item in row]
             )
             stub.DeleteRow(request)
 
@@ -88,7 +88,7 @@ class Engine:
                         case dataflow_pb2.DataType.DATA_TYPE_FLOAT:  # type: ignore
                             row.append(float(value))
                         case dataflow_pb2.DataType.DATA_TYPE_BOOL:  # type: ignore
-                            row.append(bool(value))
+                            row.append(value.lower() == "true")
                 yield row
 
     def run_dataflow(
