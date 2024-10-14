@@ -35,7 +35,11 @@ class Engine:
         with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.AddRowRequest(  # type: ignore
-                collection_name=collection_name, row=[str(item) for item in row]
+                collection_name=collection_name,
+                row=[
+                    str(item).lower() if isinstance(item, bool) else str(item)
+                    for item in row
+                ],
             )
             stub.AddRow(request)
 
@@ -43,7 +47,11 @@ class Engine:
         with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.DeleteRowRequest(  # type: ignore
-                collection_name=collection_name, row=[str(item) for item in row]
+                collection_name=collection_name,
+                row=[
+                    str(item).lower() if isinstance(item, bool) else str(item)
+                    for item in row
+                ],
             )
             stub.DeleteRow(request)
 
