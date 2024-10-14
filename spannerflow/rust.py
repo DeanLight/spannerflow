@@ -281,6 +281,24 @@ def get_select_code(
     return code
 
 
+def update_repeatable_cols_in_schema(schema: list[str]) -> list[str]:
+    repeatable_cols: dict[str, list[int]] = {}
+    for i, col in enumerate(schema):
+        if col in repeatable_cols:
+            repeatable_cols[col].append(i)
+        else:
+            repeatable_cols[col] = [i]
+
+    if not repeatable_cols:
+        return schema
+    result = schema.copy()
+    for col, indecies in repeatable_cols.items():
+        if len(indecies) > 1:
+            for i, index in enumerate(indecies):
+                result[index] = f"{col}_{i}"
+    return result
+
+
 def get_groupby_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -299,7 +317,8 @@ def get_groupby_code(
         if node == anchor:
             node_str = str(anchor)
     agg = gr_node["agg"]
-    schema = gr_node["schema"]
+    schema = update_repeatable_cols_in_schema(gr_node["schema"])
+    print(schema)
     groupby_cols = [schema[i] for i, agg_func in enumerate(agg) if agg_func is None]
     agg_by_cols = {
         schema[i]: {"agg_func": agg_func}
@@ -309,6 +328,7 @@ def get_groupby_code(
 
     agg_cols = list(agg_by_cols.keys())
     agg_by_index = {}
+
     for key, agg_func in agg_by_cols.items():
         agg_func["index"] = agg_cols.index(key)
         agg_by_index[agg_func["index"]] = {
@@ -353,7 +373,7 @@ def get_groupby_code(
     template_loader = jinja2.FileSystemLoader(searchpath=config.TEMPLATES_PATH)
     template_env = jinja2.Environment(loader=template_loader)
     agg_template = template_env.get_template("aggregate.rs.jinja2")
-
+    print(agg_by_index)
     code = agg_template.render(
         output_node=node_str,
         prev_node=prev_node_str,

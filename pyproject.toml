@@ -27,6 +27,7 @@ nbdev = "^2.3.31"
 requests = "^2.32.3"
 networkx = "^3.3"
 pandas = "^2.2.3"
+ipykernel = "^6.29.5"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0.0"
