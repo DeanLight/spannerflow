@@ -1,3 +1,4 @@
+import os
 import subprocess
 import threading
 from datetime import datetime
@@ -542,7 +543,7 @@ def create_rust_build_file(proto_dir_path: Path, proto_file_path: Path) -> None:
         f.write(output_text)
 
 
-def build_so(graph: nx.DiGraph) -> None:
+def build_so(graph: nx.DiGraph) -> tuple[Path, str]:
     config.GENERATED_RUST_PROJECT_PATH.joinpath("src").mkdir(
         parents=True, exist_ok=True
     )
@@ -554,6 +555,23 @@ def build_so(graph: nx.DiGraph) -> None:
     build_rust(
         config.GENERATED_RUST_PROJECT_PATH.joinpath(cargo_file_name).absolute(),
         config.RUST_SO_BUILD_LOG_PATH,
+    )
+    # Determine file extension based on the platform
+    crate_name = config.RUST_PROJECT_NAME
+    if os.name == "posix":  # Linux/macOS
+        if os.uname().sysname == "Darwin":
+            extension = ".dylib"  # macOS
+        else:
+            extension = ".so"  # Linux
+        lib_filename = f"lib{crate_name}{extension}"
+    elif os.name == "nt":  # Windows
+        extension = ".dll"
+        lib_filename = f"{crate_name}{extension}"
+    else:
+        raise RuntimeError("Unsupported OS")
+    return (
+        config.GENERATED_RUST_PROJECT_PATH.joinpath("target", "release", lib_filename),
+        "query_111",
     )
 
 

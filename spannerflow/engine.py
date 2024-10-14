@@ -2,11 +2,13 @@ from pathlib import Path
 from typing import Any, Generator
 
 import grpc
+import networkx as nx
 from google.protobuf import empty_pb2
 from google.protobuf.json_format import MessageToDict
 
 from spannerflow.config import Config
 from spannerflow.dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
+from spannerflow.graph_utils import find_output
 
 
 class Engine:
@@ -78,24 +80,33 @@ class Engine:
             response_iterator = stub.GetCollection(request)
 
             for response in response_iterator:
-                row = list()
-                for col_type, value in zip(schema, response.row):
-                    match dataflow_pb2.DataType.Value(col_type):  # type: ignore
-                        case dataflow_pb2.DataType.DATA_TYPE_STRING:  # type: ignore
-                            row.append(value)  # alread a string
-                        case dataflow_pb2.DataType.DATA_TYPE_INT:  # type: ignore
-                            row.append(int(value))
-                        case dataflow_pb2.DataType.DATA_TYPE_FLOAT:  # type: ignore
-                            row.append(float(value))
-                        case dataflow_pb2.DataType.DATA_TYPE_BOOL:  # type: ignore
-                            row.append(value.lower() == "true")
-                yield row
+                yield self._cast_row(schema, response.row)
+
+    @staticmethod
+    def _cast_row(schema: list[str], row: list[Any]) -> list[str]:
+        new_row = list()
+        for col_type, value in zip(schema, row):
+            match dataflow_pb2.DataType.Value(col_type):  # type: ignore
+                case dataflow_pb2.DataType.DATA_TYPE_STRING:  # type: ignore
+                    new_row.append(value)  # alread a string
+                case dataflow_pb2.DataType.DATA_TYPE_INT:  # type: ignore
+                    new_row.append(int(value))
+                case dataflow_pb2.DataType.DATA_TYPE_FLOAT:  # type: ignore
+                    new_row.append(float(value))
+                case dataflow_pb2.DataType.DATA_TYPE_BOOL:  # type: ignore
+                    new_row.append(value.lower() == "true")
+                case _:
+                    raise ValueError(f"Unknown data type: {col_type}")
+        return new_row
 
     def run_dataflow(
         self,
-        so_path: Path,
-        fn_name: str,
+        reversed_graph: nx.DiGraph,
     ) -> Generator[list[str], None, None]:
+        from spannerflow.rust import build_so
+
+        so_path, fn_name = build_so(reversed_graph)
+
         with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.RunDataflowRequest(  # type: ignore
@@ -103,6 +114,8 @@ class Engine:
                 fn_name=fn_name,
             )
             response_iterator = stub.RunDataflow(request)
-
+            schema_types = reversed_graph.nodes[find_output(reversed_graph)][
+                "schema_types"
+            ]
             for response in response_iterator:
-                yield [str(item) for item in response.row]
+                yield self._cast_row(schema_types, [str(item) for item in response.row])
