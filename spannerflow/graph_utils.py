@@ -41,9 +41,9 @@ def get_cycles(graph: nx.DiGraph) -> dict[str | int, nx.DiGraph]:
 
 
 def find_anchor_of_cycle(graph: nx.DiGraph, cycle: nx.DiGraph) -> str | int:
-    # TODO: Change to node with edge to egress node (outside of the circle)
+    egress_node = find_egress_node(graph, cycle)
     for node in cycle:
-        if graph.nodes[node]["op"] == "union":
+        if node == egress_node and graph.nodes[node]["op"] == "union":
             return node
     raise Exception("No anchor node found in the cycle")
 
@@ -111,6 +111,15 @@ def find_ingress_nodes(graph: nx.DiGraph, cycle) -> list[int | str]:
             if pred not in cycle and "anchor" not in graph.nodes[pred]:
                 ingress_nodes.append(pred)
     return ingress_nodes
+
+
+def find_egress_node(graph: nx.DiGraph, cycle) -> str | int:
+    """returns the node that has an edge from the cycle to a node that is not part of the cycle"""
+    for node in cycle:
+        for succ in graph.successors(node):
+            if succ not in cycle:
+                return node
+    raise Exception("No egress node found in the cycle")
 
 
 def create_iter_graph(graph: nx.DiGraph, cycle, anchor) -> nx.DiGraph:
