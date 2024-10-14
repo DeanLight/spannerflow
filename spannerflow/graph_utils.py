@@ -65,7 +65,7 @@ def reduced_graph(graph: nx.DiGraph) -> tuple[nx.DiGraph, dict[str | int, nx.DiG
         for node in cycle_nodes:
             for p_node in graph.predecessors(node):
                 if p_node not in cycle_nodes and p_node != anchor:
-                    reduced.add_edge(p_node, anchor)
+                    reduced.add_edge(p_node, anchor, reduced=True)
 
     return reduced, cycles
 

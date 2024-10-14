@@ -143,7 +143,12 @@ def get_union_code(
     anchor: str | int | None = None,
     in_iterate: bool = False,
 ) -> str:
-    preds = list(graph.pred[node])
+    preds = list(
+        filter(
+            lambda pred: "reduced" not in graph.get_edge_data(pred, node),
+            graph.pred[node],
+        )
+    )
     prev_node1_str: int | str = f"node_{preds[0]}"
     node_str = f"node_{node}"
     if in_iterate:
