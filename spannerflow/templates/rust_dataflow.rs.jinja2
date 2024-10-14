@@ -74,8 +74,13 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
                 let result = Arc::clone(&result); 
                 node_{{output_node}}.inspect(move |x| {
                     let cloned_x = x.clone();
-                    result.lock().unwrap().push(tuple_to_vec_string!({% for var in range(output_vars) %}
+                    result.lock().unwrap().push(tuple_to_vec_string!(
+                        {% if output_vars == 1%}
+                            cloned_x.0
+                        {% else %}
+                            {% for var in range(output_vars) %}
                             cloned_x.0.{{ var }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        {% endif %}
                     ));
                 });
             });
@@ -86,4 +91,11 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
             {% endfor %}
         });
         return output.lock().unwrap().clone();
+}
+
+
+#[no_mangle]
+pub extern "C" fn query_schema_types_{{query_id}}() -> Vec<String>{
+
+    return vec![{% for col_type in output_schema_types %}"{{ col_type }}".to_string(){% if not loop.last %}, {% endif %}{% endfor%}];
 }

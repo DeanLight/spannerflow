@@ -73,6 +73,12 @@ class equalColTheta:
         return self.col_pos_tuples == other.col_pos_tuples
 
 
+def get_input_schema_types(node: int | str) -> list[str]:
+    engine = Engine(config)
+    collections = engine.get_collections()
+    return [x for x in collections[str(node)]]
+
+
 def get_input_schema(node: int | str) -> list[str]:
     engine = Engine(config)
     collections = engine.get_collections()
@@ -175,20 +181,73 @@ def generate_code(
     in_iterate: bool = False,
 ) -> str:
     gr_node = graph.nodes[node]
+    preds = [graph.nodes[key] for key in graph.pred[node].keys()]
     match gr_node["op"]:
         case "get_rel":
+            gr_node["schema_types"] = get_input_schema_types(node)
             code = get_get_rel_code(graph, node, anchor=anchor, in_iterate=in_iterate)
         case "rename":
+            if len(preds) != 1:
+                raise ValueError(
+                    "Rename node has invalid number of predecessors: ",
+                    (len(preds), node),
+                )
+            gr_node["schema_types"] = preds[0]["schema_types"]
             code = get_rename_code(graph, node, anchor=anchor, in_iterate=in_iterate)
         case "project":
+            if len(preds) != 1:
+                raise ValueError(
+                    "Project node has invalid number of predecessors: ",
+                    (len(preds), node),
+                )
+            pred = preds[0]
+            gr_node["schema_types"] = [
+                pred["schema_types"][pred["schema"].index(col)]
+                for col in gr_node["schema"]
+            ]
             code = get_project_code(graph, node, anchor=anchor, in_iterate=in_iterate)
         case "join":
+            if len(preds) != 2:
+                raise ValueError(
+                    "Join node has invalid number of predecessors: ", (len(preds), node)
+                )
+            # TODO
+            schema_types = []
+            for x in gr_node["schema"]:
+                index = preds[0]["schema"].index(x)
+                if index != -1:
+                    schema_types.append(preds[0]["schema_types"][index])
+                else:
+                    index = preds[1]["schema"].index(x)
+                    schema_types.append(preds[1]["schema_types"][index])
+            gr_node["schema_types"] = schema_types
             code = get_join_code(graph, node, anchor=anchor, in_iterate=in_iterate)
         case "select":
+            if len(preds) != 1:
+                raise ValueError(
+                    "Select node has invalid number of predecessors: ",
+                    (len(preds), node),
+                )
+            gr_node["schema_types"] = preds[0]["schema_types"]
             code = get_select_code(graph, node, anchor=anchor, in_iterate=in_iterate)
         case "union":
+            gr_node["schema_types"] = preds[0]["schema_types"]
             code = get_union_code(graph, node, in_iterate=in_iterate, anchor=anchor)
         case "groupby":
+            if len(preds) != 1:
+                raise ValueError(
+                    "Group By node has invalid number of predecessors: ",
+                    (len(preds), node),
+                )
+            schema_types = []
+            for index, agg in enumerate(gr_node["agg"]):
+                if agg is None:
+                    schema_types.append(preds[0]["schema_types"][index])
+                elif agg == "count":
+                    schema_types.append("DATA_TYPE_INT")
+                else:
+                    schema_types.append("DATA_TYPE_FLOAT")
+            gr_node["schema_types"] = schema_types
             code = get_groupby_code(graph, node, anchor=anchor, in_iterate=in_iterate)
         case _:
             raise ValueError(f"Unsupported operation: {gr_node['op']}")
@@ -461,6 +520,7 @@ def create_rust_file(timestamp: str, graph: nx.DiGraph) -> None:
         top_sort=list(nx.topological_sort(reduced)),
         query_id=111,
         output_node=output_node,
+        output_schema_types=graph.nodes[output_node]["schema_types"],
         output_vars=output_vars,
     )
 
