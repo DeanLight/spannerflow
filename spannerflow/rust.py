@@ -318,7 +318,6 @@ def get_groupby_code(
             node_str = str(anchor)
     agg = gr_node["agg"]
     schema = update_repeatable_cols_in_schema(gr_node["schema"])
-    print(schema)
     groupby_cols = [schema[i] for i, agg_func in enumerate(agg) if agg_func is None]
     agg_by_cols = {
         schema[i]: {"agg_func": agg_func}
@@ -373,7 +372,6 @@ def get_groupby_code(
     template_loader = jinja2.FileSystemLoader(searchpath=config.TEMPLATES_PATH)
     template_env = jinja2.Environment(loader=template_loader)
     agg_template = template_env.get_template("aggregate.rs.jinja2")
-    print(agg_by_index)
     code = agg_template.render(
         output_node=node_str,
         prev_node=prev_node_str,
