@@ -141,7 +141,7 @@ def get_join_code(
 
     return f"""let {out_node_str} = {join1_str}.map(|{get_node_schema(graph, join1)}| ({common_schema}, {join1_uncommon_schema}))
                         .join(&{join2_str}.map(|{get_node_schema(graph, join2)}| ({common_schema}, {join2_uncommon_schema})))
-                        .map(|({common_schema}, ({out_join1_uncommon_schema}, {out_join2_uncommon_schema}))| ({get_node_schema(graph, node)}));"""
+                        .map(|({common_schema if common_schema != "0" else "_"}, ({out_join1_uncommon_schema}, {out_join2_uncommon_schema}))| ({get_node_schema(graph, node)}));"""
 
 
 def get_union_code(
@@ -212,15 +212,15 @@ def generate_code(
                 raise ValueError(
                     "Join node has invalid number of predecessors: ", (len(preds), node)
                 )
-            # TODO
             schema_types = []
             for x in gr_node["schema"]:
-                index = preds[0]["schema"].index(x)
-                if index != -1:
+                try:
+                    index = preds[0]["schema"].index(x)
                     schema_types.append(preds[0]["schema_types"][index])
-                else:
+                except ValueError:
                     index = preds[1]["schema"].index(x)
                     schema_types.append(preds[1]["schema_types"][index])
+
             gr_node["schema_types"] = schema_types
             code = get_join_code(graph, node, anchor=anchor, in_iterate=in_iterate)
         case "select":
@@ -250,6 +250,9 @@ def generate_code(
                     schema_types.append("DATA_TYPE_FLOAT")
             gr_node["schema_types"] = schema_types
             code = get_groupby_code(graph, node, anchor=anchor, in_iterate=in_iterate)
+        case "get_const":
+            # TODO
+            raise ValueError(f"Unsupported operation: {gr_node['op']}")
         case _:
             raise ValueError(f"Unsupported operation: {gr_node['op']}")
 
