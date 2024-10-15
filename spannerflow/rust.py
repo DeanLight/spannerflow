@@ -6,7 +6,6 @@ from pathlib import Path
 
 import jinja2
 import networkx as nx
-import pandas as pd
 
 from spannerflow.config import Config
 from spannerflow.engine import Engine
@@ -30,48 +29,6 @@ PYTHON_RUST_TYPES = {
     "DATA_TYPE_FLOAT": "f32",
     "DATA_TYPE_BOOL": "bool",
 }
-
-
-class equalConstTheta:
-    def __init__(self, *pos_val_tuples):
-        self.pos_val_tuples = pos_val_tuples
-
-    def __call__(self, df):
-        masks = [df.iloc[:, pos] == val for pos, val in self.pos_val_tuples]
-        return pd.concat(masks, axis=1).all(axis=1)
-
-    def __str__(self):
-        return f"""Theta({', '.join([f'col_{pos}={val}' for pos,val in self.pos_val_tuples])})"""
-
-    def __repr__(self):
-        return str(self)
-
-    def __eq__(self, other):
-        if not isinstance(other, equalConstTheta):
-            return False
-        return self.pos_val_tuples == other.pos_val_tuples
-
-
-class equalColTheta:
-    def __init__(self, *col_pos_tuples):
-        self.col_pos_tuples = col_pos_tuples
-
-    def __call__(self, df):
-        masks = [
-            df.iloc[:, pos1] == df.iloc[:, pos2] for pos1, pos2 in self.col_pos_tuples
-        ]
-        return pd.concat(masks, axis=1).all(axis=1)
-
-    def __str__(self):
-        return f"""Theta({', '.join([f'col_{pos1}=col_{pos2}' for pos1,pos2 in self.col_pos_tuples])})"""
-
-    def __repr__(self):
-        return str(self)
-
-    def __eq__(self, other):
-        if not isinstance(other, equalColTheta):
-            return False
-        return self.col_pos_tuples == other.col_pos_tuples
 
 
 def get_input_schema_types(node: int | str) -> list[str]:
@@ -171,7 +128,7 @@ def get_union_code(
             prev_node2_str = str(anchor)
         return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
     raise ValueError(
-        "Union node has invalida number of predecessors: ", (len(preds), node)
+        "Union node has invalid number of predecessors: ", (len(preds), node)
     )
 
 
@@ -339,13 +296,13 @@ def get_select_code(
             node_str = str(anchor)
     theta = gr_node["theta"]
     preds = []
-    # TODO:
-    if isinstance(theta, equalConstTheta):
-        preds = [f"col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
-    # TODO:
-    elif isinstance(theta, equalColTheta):
+    if hasattr(theta, "pos_val_tuples"):  #  equalConstTheta
+        preds = [f"*col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
+    elif hasattr(theta, "col_pos_tuples"):  #  equalColTheta
         preds = [f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples]
-    code = f"let {node_str} = {prev_node_str}.filter(|&{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
+    else:
+        raise ValueError(f"Unsupported theta join: {theta}. {dir(theta)}")
+    code = f"let {node_str} = {prev_node_str}.filter(|{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
     return code
 
 
