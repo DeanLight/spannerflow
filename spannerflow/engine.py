@@ -36,10 +36,7 @@ class Engine:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.AddRowRequest(  # type: ignore
                 collection_name=collection_name,
-                row=[
-                    str(item).lower() if isinstance(item, bool) else str(item)
-                    for item in row
-                ],
+                row=self._serialize_row(self.get_collections()[collection_name], row),
             )
             stub.AddRow(request)
 
@@ -48,10 +45,7 @@ class Engine:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.DeleteRowRequest(  # type: ignore
                 collection_name=collection_name,
-                row=[
-                    str(item).lower() if isinstance(item, bool) else str(item)
-                    for item in row
-                ],
+                row=self._serialize_row(self.get_collections()[collection_name], row),
             )
             stub.DeleteRow(request)
 
@@ -88,11 +82,11 @@ class Engine:
             response_iterator = stub.GetCollection(request)
 
             for response in response_iterator:
-                yield self._cast_row(schema, response.row)
+                yield self._deserialize_row(schema, response.row)
 
     @staticmethod
-    def _cast_row(schema: list[str], row: list[Any]) -> list[str]:
-        new_row = list()
+    def _deserialize_row(schema: list[str], row: list[str]) -> list[Any]:
+        new_row: list[Any] = list()
         for col_type, value in zip(schema, row):
             match dataflow_pb2.DataType.Value(col_type):  # type: ignore
                 case dataflow_pb2.DataType.DATA_TYPE_STRING:  # type: ignore
@@ -103,6 +97,33 @@ class Engine:
                     new_row.append(float(value))
                 case dataflow_pb2.DataType.DATA_TYPE_BOOL:  # type: ignore
                     new_row.append(value.lower() == "true")
+                case _:
+                    raise ValueError(f"Unknown data type: {col_type}")
+        return new_row
+
+    @staticmethod
+    def _serialize_row(schema: list[str], row: list[Any]) -> list[str]:
+        new_row = list()
+        for col_type, value in zip(schema, row):
+            match dataflow_pb2.DataType.Value(col_type):  # type: ignore
+                case dataflow_pb2.DataType.DATA_TYPE_STRING:  # type: ignore
+                    if not isinstance(value, str):
+                        raise ValueError(f"Expected str, got {type(value)}")
+                    new_row.append(value)
+                case dataflow_pb2.DataType.DATA_TYPE_INT:  # type: ignore
+                    if not isinstance(value, int):
+                        raise ValueError(f"Expected int, got {type(value)}")
+                    new_row.append(str(value))
+                case dataflow_pb2.DataType.DATA_TYPE_FLOAT:  # type: ignore
+                    if not isinstance(value, (float, int)) or value == float("nan"):
+                        raise ValueError(
+                            f"Expected float/int, got {value} ({type(value)})"
+                        )
+                    new_row.append(str(value))
+                case dataflow_pb2.DataType.DATA_TYPE_BOOL:  # type: ignore
+                    if not isinstance(value, bool):
+                        raise ValueError(f"Expected bool, got {type(value)}")
+                    new_row.append(str(value).lower())
                 case _:
                     raise ValueError(f"Unknown data type: {col_type}")
         return new_row
@@ -126,4 +147,6 @@ class Engine:
                 "schema_types"
             ]
             for response in response_iterator:
-                yield self._cast_row(schema_types, [str(item) for item in response.row])
+                yield self._deserialize_row(
+                    schema_types, [str(item) for item in response.row]
+                )
