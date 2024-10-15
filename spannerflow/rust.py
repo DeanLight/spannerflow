@@ -40,8 +40,7 @@ def get_input_schema_types(node: int | str) -> list[str]:
 def get_input_schema(node: int | str) -> list[str]:
     engine = Engine(config)
     collections = engine.get_collections()
-    types_list = [PYTHON_RUST_TYPES[x] for x in collections[str(node)]]
-    return types_list
+    return [PYTHON_RUST_TYPES[x] for x in collections[str(node)]]
 
 
 def get_sources_data(
@@ -113,26 +112,39 @@ def get_union_code(
             graph.pred[node],
         )
     )
-    prev_node1_str: int | str = f"node_{preds[0]}"
-    node_str = f"node_{node}"
-    if in_iterate:
-        if preds[0] == anchor:
-            prev_node1_str = anchor
-        if node == anchor:
-            node_str = str(anchor)
+
+    prev_node1_str = get_prev_node_str(preds[0], anchor=anchor, in_iterate=in_iterate)
+    node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
+
     if len(preds) == 1:
         return f"let {node_str} = {prev_node1_str};"
     elif len(preds) == 2:
-        prev_node2_str = f"node_{preds[1]}"
-        if in_iterate and preds[1] == anchor:
-            prev_node2_str = str(anchor)
+        prev_node2_str = get_prev_node_str(
+            preds[1], anchor=anchor, in_iterate=in_iterate
+        )
         return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
     raise ValueError(
         "Union node has invalid number of predecessors: ", (len(preds), node)
     )
 
 
-def generate_code(
+def get_prev_node_str(
+    pred: str | int, anchor: str | int | None = None, in_iterate: bool = False
+) -> str:
+    if in_iterate and pred == anchor:
+        return str(anchor)
+    return f"node_{pred}"
+
+
+def get_node_str(
+    node: str | int, anchor: str | int | None = None, in_iterate: bool = False
+) -> str:
+    if in_iterate and node == anchor:
+        return str(anchor)
+    return f"node_{node}"
+
+
+def generate_node_code(
     graph: nx.DiGraph,
     node: str | int,
     anchor: str | int | None = None,
@@ -224,15 +236,12 @@ def get_project_code(
 ) -> str:
     schema = get_node_schema(graph, node)
     prev_nodes = list(graph.pred[node])
-    if prev_nodes:
-        prev_node_str = f"node_{prev_nodes[0]}"
 
-    node_str = f"node_{node}"
-    if in_iterate:
-        if prev_nodes and prev_nodes[0] == anchor:
-            prev_node_str = str(anchor)
-        if node == anchor:
-            node_str = str(anchor)
+    prev_node_str = get_prev_node_str(
+        prev_nodes[0], anchor=anchor, in_iterate=in_iterate
+    )
+    node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
+
     if prev_nodes:
         prev_schema = get_node_schema(graph, prev_nodes[0])
         code = f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {schema});"
@@ -247,10 +256,7 @@ def get_get_rel_code(
     anchor: str | int | None = None,
     in_iterate: bool = False,
 ) -> str:
-    node_str = f"node_{node}"
-    if in_iterate:
-        if node == anchor:
-            node_str = str(anchor)
+    node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
     code = f"let {node_str} = input_{node}.to_collection(scope);"
     return code
 
@@ -263,15 +269,11 @@ def get_rename_code(
 ) -> str:
     schema = get_node_schema(graph, node)
     prev_nodes = list(graph.pred[node])
-    if prev_nodes:
-        prev_node_str = f"node_{prev_nodes[0]}"
 
-    node_str = f"node_{node}"
-    if in_iterate:
-        if prev_nodes and prev_nodes[0] == anchor:
-            prev_node_str = str(anchor)
-        if node == anchor:
-            node_str = str(anchor)
+    prev_node_str = get_prev_node_str(
+        prev_nodes[0], anchor=anchor, in_iterate=in_iterate
+    )
+    node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
 
     code = f"let {node_str} = {prev_node_str}.map(|{schema}| {schema});"
     return code
@@ -285,15 +287,12 @@ def get_select_code(
 ) -> str:
     gr_node = graph.nodes[node]
     prev_nodes = list(graph.pred[node])
-    if prev_nodes:
-        prev_node_str = f"node_{prev_nodes[0]}"
 
-    node_str = f"node_{node}"
-    if in_iterate:
-        if prev_nodes and prev_nodes[0] == anchor:
-            prev_node_str = str(anchor)
-        if node == anchor:
-            node_str = str(anchor)
+    prev_node_str = get_prev_node_str(
+        prev_nodes[0], anchor=anchor, in_iterate=in_iterate
+    )
+    node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
+
     theta = gr_node["theta"]
     preds = []
     if hasattr(theta, "pos_val_tuples"):  #  equalConstTheta
@@ -332,15 +331,12 @@ def get_groupby_code(
 ) -> str:
     gr_node = graph.nodes[node]
     prev_nodes = list(graph.pred[node])
-    if prev_nodes:
-        prev_node_str = f"node_{prev_nodes[0]}"
 
-    node_str = f"node_{node}"
-    if in_iterate:
-        if prev_nodes and prev_nodes[0] == anchor:
-            prev_node_str = str(anchor)
-        if node == anchor:
-            node_str = str(anchor)
+    prev_node_str = get_prev_node_str(
+        prev_nodes[0], anchor=anchor, in_iterate=in_iterate
+    )
+    node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
+
     agg = gr_node["agg"]
     schema = update_repeatable_cols_in_schema(gr_node["schema"])
     groupby_cols = [schema[i] for i, agg_func in enumerate(agg) if agg_func is None]
@@ -422,11 +418,11 @@ def generate_graph_code(graph: nx.DiGraph) -> dict[str | int, str]:
     for node in list(nx.topological_sort(reduced)):
         if node in cycles.keys():
             iter_graph = create_iter_graph(graph, cycles[node], node)
-            anchor_code = generate_code(reduced, node)
+            anchor_code = generate_node_code(reduced, node)
             cycle_code = {}
             cycle_order = traverse_cycle(cycles[node], f"iter_{node}")
             for cycle_node in cycle_order:
-                cycle_code[cycle_node] = generate_code(
+                cycle_code[cycle_node] = generate_node_code(
                     iter_graph, cycle_node, anchor=f"iter_{node}", in_iterate=True
                 )
             flow_code[node] = iterate_template.render(
@@ -441,7 +437,7 @@ def generate_graph_code(graph: nx.DiGraph) -> dict[str | int, str]:
                 }
             )
         else:
-            flow_code[node] = generate_code(graph, node)
+            flow_code[node] = generate_node_code(graph, node)
     return flow_code
 
 
