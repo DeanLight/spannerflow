@@ -26,7 +26,7 @@ config = Config()
 PYTHON_RUST_TYPES = {
     "DATA_TYPE_STRING": "String",
     "DATA_TYPE_INT": "i32",
-    "DATA_TYPE_FLOAT": "f32",
+    "DATA_TYPE_FLOAT": "OrderedFloat<f32>",
     "DATA_TYPE_BOOL": "bool",
 }
 
