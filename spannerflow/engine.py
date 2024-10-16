@@ -98,6 +98,8 @@ class Engine:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = empty_pb2.Empty()
             response = stub.GetCollections(request)
+            if "collections" not in MessageToDict(response):
+                return dict()
             return {
                 d["name"]: d["schema"] for d in MessageToDict(response)["collections"]
             }
