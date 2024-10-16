@@ -5,18 +5,44 @@ import grpc
 import networkx as nx
 from google.protobuf import empty_pb2
 from google.protobuf.json_format import MessageToDict
+from singleton_decorator import singleton
 
 from spannerflow.config import Config
 from spannerflow.dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
 from spannerflow.graph_utils import find_output
 
 
+@singleton
 class Engine:
-    def __init__(self, config: Config):
-        self.config = config
+    def __init__(self, config: Config = Config(), allow_reuse_server: bool = False):
+        from spannerflow.rust_dataflow import RustDataflow
+
+        self._config = config
+        self._rust_dataflow = RustDataflow(config=config, engine=self)
+        self._is_open = False
+
+    def __enter__(self):
+        self._rust_dataflow.__enter__()
+        self._is_open = True
+        return self
+
+    def open(self):
+        if self._is_open:
+            return
+
+        self.__enter__()
+
+    def close(self):
+        if not self._is_open:
+            return
+        self.__exit__(None, None, None)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._rust_dataflow.__exit__(exc_type, exc_value, traceback)
+        self._is_open = False
 
     def save_to_csv(self, collection_name: str, file_path: Path) -> None:
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.SaveToCSVRequest(  # type: ignore
                 collection_name=collection_name, file_path=str(file_path)
@@ -24,7 +50,7 @@ class Engine:
             stub.SaveToCSV(request)
 
     def load_from_csv(self, collection_name: str, file_path: Path) -> None:
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.LoadFromCSVRequest(  # type: ignore
                 collection_name=collection_name, file_path=str(file_path)
@@ -32,7 +58,7 @@ class Engine:
             stub.LoadFromCSV(request)
 
     def add_row(self, collection_name: str, row: list[Any]) -> None:
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.AddRowRequest(  # type: ignore
                 collection_name=collection_name,
@@ -41,7 +67,7 @@ class Engine:
             stub.AddRow(request)
 
     def delete_row(self, collection_name: str, row: list[Any]) -> None:
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.DeleteRowRequest(  # type: ignore
                 collection_name=collection_name,
@@ -50,7 +76,7 @@ class Engine:
             stub.DeleteRow(request)
 
     def add_collection(self, collection_name: str, schema: list[int]) -> None:
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.AddCollectionRequest(  # type: ignore
                 collection_name=collection_name, schema=schema
@@ -58,7 +84,7 @@ class Engine:
             stub.AddCollection(request)
 
     def delete_collection(self, collection_name: str) -> None:
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.DeleteCollectionRequest(  # type: ignore
                 collection_name=collection_name
@@ -66,7 +92,7 @@ class Engine:
             stub.DeleteCollection(request)
 
     def get_collections(self) -> dict[str, list[str]]:
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = empty_pb2.Empty()
             response = stub.GetCollections(request)
@@ -76,7 +102,7 @@ class Engine:
 
     def get_collection(self, collection_name) -> Generator[list[str], None, None]:
         schema = self.get_collections()[collection_name]
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.GetCollectionRequest(collection_name=collection_name)  # type: ignore
             response_iterator = stub.GetCollection(request)
@@ -132,11 +158,9 @@ class Engine:
         self,
         reversed_graph: nx.DiGraph,
     ) -> Generator[list[str], None, None]:
-        from spannerflow.rust import build_so
+        so_path, fn_name = self._rust_dataflow.build_so(reversed_graph)
 
-        so_path, fn_name = build_so(reversed_graph)
-
-        with grpc.insecure_channel(self.config.DATAFLOW_ADDRESS) as channel:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.RunDataflowRequest(  # type: ignore
                 so_path=str(so_path),
