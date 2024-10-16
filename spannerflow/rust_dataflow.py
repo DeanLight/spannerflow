@@ -26,11 +26,18 @@ from spannerflow.rust_utils import build_rust
 
 @singleton
 class RustDataflow:
-    PYTHON_RUST_TYPES = {
+    DATAFLOW_TO_RUST_TYPES = {
         "DATA_TYPE_STRING": "String",
         "DATA_TYPE_INT": "i32",
         "DATA_TYPE_FLOAT": "OrderedFloat<f32>",
         "DATA_TYPE_BOOL": "bool",
+    }
+
+    PYTHON_TO_DATAFLOW_TYPES = {
+        str: "DATA_TYPE_STRING",
+        int: "DATA_TYPE_INT",
+        float: "DATA_TYPE_FLOAT",
+        bool: "DATA_TYPE_BOOL",
     }
 
     def __init__(
@@ -62,14 +69,36 @@ class RustDataflow:
 
     def get_input_schema(self, node: int | str) -> list[str]:
         collections = self._engine.get_collections()
-        return [self.PYTHON_RUST_TYPES[x] for x in collections[str(node)]]
+        return [self.DATAFLOW_TO_RUST_TYPES[x] for x in collections[str(node)]]
 
     def get_sources_data(
         self,
         graph: nx.DiGraph,
     ) -> dict[str | int, dict[str, str | int | list[str]]]:
         return {
-            source: {"name": source, "schema": self.get_input_schema(source)}
+            source: {
+                "name": source,
+                "schema": (
+                    self.get_input_schema(source)
+                    if "schema_types" not in graph.nodes[source]
+                    else [
+                        self.DATAFLOW_TO_RUST_TYPES[t]
+                        for t in graph.nodes[source]["schema_types"]
+                    ]
+                ),
+                "op": graph.nodes[source]["op"],
+                "consts": (
+                    self._engine._serialize_row(
+                        graph.nodes[source]["schema_types"],
+                        [
+                            graph.nodes[source]["const_dict"][col]
+                            for col in graph.nodes[source]["schema"]
+                        ],
+                    )
+                    if graph.nodes[source]["op"] == "get_const"
+                    else []
+                ),
+            }
             for source in find_sources(graph)
         }
 
@@ -262,10 +291,48 @@ class RustDataflow:
                 )
             case "get_const":
                 # TODO
+                gr_node["schema_types"] = [
+                    self.PYTHON_TO_DATAFLOW_TYPES[type(const)]
+                    for const in gr_node["const_dict"].values()
+                ]
+                code = self.get_get_const_code(
+                    graph, node, anchor=anchor, in_iterate=in_iterate
+                )
+            case "product":
+                if len(preds) != 2:
+                    raise ValueError(
+                        "Product node has invalid number of predecessors: ",
+                        (len(preds), node),
+                    )
+                schema_types = []
+                for x in gr_node["schema"]:
+                    try:
+                        index = preds[0]["schema"].index(x)
+                        schema_types.append(preds[0]["schema_types"][index])
+                    except ValueError:
+                        index = preds[1]["schema"].index(x)
+                        schema_types.append(preds[1]["schema_types"][index])
+                gr_node["schema_types"] = schema_types
+                code = self.get_join_code(  # not a bug, same implementation as join
+                    graph, node, anchor=anchor, in_iterate=in_iterate
+                )
+            case "ie_map":
+                # TODO
                 raise ValueError(f"Unsupported operation: {gr_node['op']}")
             case _:
                 raise ValueError(f"Unsupported operation: {gr_node['op']}")
 
+        return code
+
+    def get_get_const_code(
+        self,
+        graph: nx.DiGraph,
+        node: str | int,
+        anchor: str | int | None = None,
+        in_iterate: bool = False,
+    ) -> str:
+        node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
+        code = f"let {node_str} = input_{node}.to_collection(scope);"
         return code
 
     def get_project_code(

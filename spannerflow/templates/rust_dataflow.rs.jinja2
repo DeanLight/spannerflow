@@ -60,7 +60,7 @@ pub async fn run_ie_function(
 #[no_mangle]
 pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>{
     {% for key,value in sources.items() %}
-        let collection_{{ value['name'] }} = collections.get("{{ value['name'] }}").unwrap().clone();
+        {% if value["op"] == "get_rel" %}let collection_{{ value['name'] }} = collections.get("{{ value['name'] }}").unwrap().clone();{% endif %}
     {% endfor %}
         let output = Arc::new(Mutex::new(Vec::new()));
         let result = Arc::clone(&output);
@@ -86,9 +86,13 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
                 });
             });
             {% for key,value in sources.items() %}
+            {% if value["op"] == "get_rel" %}
                 for vec in &collection_{{value['name']}} {
                     input_{{value['name']}}.insert(({% for element in value['schema'] %} vec[{{loop.index0}}].parse::<{{element}}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
                 }
+            {% elif value["op"] == "get_const" %}
+                input_{{value['name']}}.insert(({% for element in value['consts'] %} "{{ element }}".parse::<{{ value['schema'][loop.index0] }}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
+            {% endif %}
             {% endfor %}
         });
         return output.lock().unwrap().clone();
