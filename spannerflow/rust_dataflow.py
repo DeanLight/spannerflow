@@ -290,7 +290,6 @@ class RustDataflow:
                     graph, node, anchor=anchor, in_iterate=in_iterate
                 )
             case "get_const":
-                # TODO
                 gr_node["schema_types"] = [
                     self.PYTHON_TO_DATAFLOW_TYPES[type(const)]
                     for const in gr_node["const_dict"].values()
@@ -317,11 +316,43 @@ class RustDataflow:
                     graph, node, anchor=anchor, in_iterate=in_iterate
                 )
             case "ie_map":
-                # TODO
-                raise ValueError(f"Unsupported operation: {gr_node['op']}")
+                gr_node["schema_types"] = [
+                    self.PYTHON_TO_DATAFLOW_TYPES[t]
+                    for t in gr_node["in_schema"] + gr_node["out_schema"]
+                ]
+                print(gr_node)
+                code = self.get_ie_map_code(
+                    graph, node, anchor=anchor, in_iterate=in_iterate
+                )
             case _:
                 raise ValueError(f"Unsupported operation: {gr_node['op']}")
 
+        return code
+
+    def get_ie_map_code(
+        self,
+        graph: nx.DiGraph,
+        node: str | int,
+        anchor: str | int | None = None,
+        in_iterate: bool = False,
+    ) -> str:
+        prev_nodes = list(graph.pred[node])
+        node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
+        match graph.nodes[node]["name"]:
+            case "not":
+                if len(prev_nodes) != 1:
+                    raise ValueError(
+                        "Not node has invalid number of predecessors: ",
+                        (len(prev_nodes), node),
+                    )
+                prev_node_str = self.get_prev_node_str(
+                    prev_nodes[0], anchor=anchor, in_iterate=in_iterate
+                )
+                code = f"let {node_str} = {prev_node_str}.map(|{get_node_schema(graph, prev_nodes[0])}| ({get_node_schema(graph, prev_nodes[0])}, !{get_node_schema(graph, prev_nodes[0])}));"
+            case _:
+                raise ValueError(
+                    f"Unsupported IE Map function: {graph.nodes[node]['name']}"
+                )
         return code
 
     def get_get_const_code(
