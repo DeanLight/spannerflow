@@ -22,8 +22,9 @@ class Engine:
         self._is_open = False
 
     def __enter__(self):
-        self._rust_dataflow.__enter__()
-        self._is_open = True
+        if not self._is_open:
+            self._rust_dataflow.__enter__()
+            self._is_open = True
         return self
 
     def open(self):
@@ -38,8 +39,9 @@ class Engine:
         self.__exit__(None, None, None)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._rust_dataflow.__exit__(exc_type, exc_value, traceback)
-        self._is_open = False
+        if self._is_open:
+            self._rust_dataflow.__exit__(exc_type, exc_value, traceback)
+            self._is_open = False
 
     def save_to_csv(self, collection_name: str, file_path: Path) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
