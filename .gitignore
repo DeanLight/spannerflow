@@ -185,3 +185,4 @@ generated_rust
 spannerflow/logs
 protoc/
 rust/
+.vscode/
