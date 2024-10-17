@@ -72,11 +72,8 @@ def reduced_graph(graph: nx.DiGraph) -> tuple[nx.DiGraph, dict[str | int, nx.DiG
 
 def get_node_schema(graph: nx.DiGraph, node: str | int) -> str:
     schema = graph.nodes[node]["schema"]
-    if len(schema) > 1:
+    if len(schema) != 1:
         return f"({', '.join(schema)})"
-
-    if len(schema) == 0:
-        return "()"
     return schema[0]
 
 
