@@ -8,7 +8,12 @@ use differential_dataflow::input::InputSession;
 use differential_dataflow::operators::*;
 
 use tonic::Request;
+
 use ordered_float::OrderedFloat;
+
+use futures::stream::{self};
+
+use tokio::runtime::Runtime;
 
 use dataflow::ie_function_service_client::IeFunctionServiceClient;
 use dataflow::*;
@@ -33,28 +38,36 @@ macro_rules! tuple_to_vec_string {
     };
 }
 
-pub async fn run_ie_function(
-    server_address: String,
-    function_name: String,
-    collection_name: String,
-) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
-    let mut client = IeFunctionServiceClient::connect(server_address).await?;
+fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>> ) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
+    let rt = Runtime::new()?;
 
-    let request = RunIeFunctionRequest {
-        function_name,
-        collection_name,
-    };
+    rt.block_on(async {
+        let mut output: Vec<Vec<String>> = vec![];
+        let mut client = IeFunctionServiceClient::connect(address).await.unwrap();
 
-    let response = client.run_ie_function(Request::new(request)).await?;
+        let mut requests: Vec<RunIeFunctionRequest> = vec![
+            RunIeFunctionRequest {
+                message_type: Some(run_ie_function_request::MessageType::FunctionName(function_name)),
+            },
+        ];
+        for row in data {
+            requests.push(RunIeFunctionRequest {
+                message_type: Some(run_ie_function_request::MessageType::Row(RowRequest {
+                    row: row,
+                })),
+            });
+        }
 
-    let mut results = Vec::new();
-    let mut response_stream = response.into_inner();
-    
-    while let Some(response) = response_stream.message().await? {
-        results.push(response.row);
-    }
+        let request_stream = stream::iter(requests);
 
-    Ok(results)
+        let mut response_stream = client.run_ie_function(Request::new(request_stream)).await?.into_inner(); // Declare as mutable since we need to iterate over it
+
+        while let Some(response) = response_stream.message().await? {            
+            output.push(response.row.clone());
+        }
+
+        Ok::<Vec<Vec<String>>, Box<dyn std::error::Error>>(output)
+    })
 }
 
 #[no_mangle]
@@ -67,7 +80,7 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
 
         let _ = timely::execute_from_args(std::env::args(), move |worker| {
         {% for key,value in sources.items() %}
-            let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['schema'] %} {{ element }} {% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
+            let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['schema'] %}{{ element }}{% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
         {% endfor %}
             worker.dataflow(|scope| {
             {% for node in top_sort %}

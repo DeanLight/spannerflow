@@ -350,6 +350,8 @@ class RustDataflow:
                 )
                 code = f"let {node_str} = {prev_node_str}.map(|{get_node_schema(graph, prev_nodes[0])}| ({get_node_schema(graph, prev_nodes[0])}, !{get_node_schema(graph, prev_nodes[0])}));"
             case _:
+                ie_map_template = self._template_env.get_template("ie_map.rs.jinja2")
+                code = ie_map_template.render()
                 raise ValueError(
                     f"Unsupported IE Map function: {graph.nodes[node]['name']}"
                 )

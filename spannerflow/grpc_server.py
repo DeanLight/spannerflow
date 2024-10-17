@@ -1,6 +1,6 @@
 import asyncio
 import inspect
-from typing import AsyncGenerator, Generator, Iterable
+from typing import AsyncGenerator
 
 import grpc
 
@@ -35,19 +35,10 @@ def register_function(func):
 
 ## Example Functions Start ##
 @register_function
-async def async_greet(
-    rows: AsyncGenerator[Iterable[str], None],
-) -> AsyncGenerator[list[str], None]:
-    async for row in rows:
-        yield list(row) + ["Hello, World!"]
-
-
-@register_function
-def sync_greet(
-    rows: Generator[Iterable[str], None, None],
-) -> Generator[list[str], None, None]:
+def sync_greet(rows: list[list[str]]) -> list[list[str]]:
     for row in rows:
-        yield list(row) + ["Hello, World!"]
+        row += ["Hello, World!"]
+    return rows
 
 
 ## Example Functions End ##
@@ -56,44 +47,41 @@ def sync_greet(
 class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
     async def RunIEFunction(
         self,
-        request: dataflow_pb2.RunIEFunctionRequest,  # type: ignore
+        request_iterator: AsyncGenerator[dataflow_pb2.RunIEFunctionRequest, None],  # type: ignore
         context,
     ) -> AsyncGenerator[dataflow_pb2.RunIEFunctionResponse, None]:  # type: ignore
-        collection_name = request.collection_name
-        function_name = request.function_name
-        func = _IE_FUNCTIONS.get(function_name)
-        if func is None:
-            context.set_details("IE Function not found.")
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            return  # Return early after setting the error
-        # TODO: Add support for more function structures
-        if inspect.isasyncgenfunction(func):
-            async for row in func(get_collection_async(collection_name)):
-                yield dataflow_pb2.RunIEFunctionResponse(row=row)  # type: ignore
+        function_name = None
+        func = None
+        rows = []
+        async for request in request_iterator:
+            if request.HasField("function_name"):
+                # Extract the function_name from the first request
+                function_name = request.function_name
+                func = _IE_FUNCTIONS.get(function_name)
 
-        else:
-            for row in func(get_collection_sync(collection_name)):
-                yield dataflow_pb2.RunIEFunctionResponse(row=row)  # type: ignore
+                if func is None:
+                    context.set_details(f"IE Function '{function_name}' not found.")
+                    context.set_code(grpc.StatusCode.NOT_FOUND)
+                    return  # Return early after setting the error
 
+            elif request.HasField("row"):
+                if func is None:
+                    context.set_details("Function name must be provided before rows.")
+                    context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+                    return  # Function name must come first
 
-def get_collection_sync(collection_name):
-    with grpc.insecure_channel(config.DATAFLOW_ADDRESS) as channel:
-        stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
-        request = dataflow_pb2.GetCollectionRequest(collection_name=collection_name)  # type: ignore
-        response_iterator = stub.GetCollection(request)
+                rows.append([str(row) for row in request.row.row])
 
-        for response in response_iterator:
-            yield response.row
+        if function_name is None or func is None:
+            context.set_details("No function name provided.")
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            return
 
-
-async def get_collection_async(collection_name):
-    async with grpc.aio.insecure_channel(config.DATAFLOW_ADDRESS) as channel:
-        stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
-        request = dataflow_pb2.GetCollectionRequest(collection_name=collection_name)  # type: ignore
-        response_iterator = stub.GetCollection(request)
-
-        async for response in response_iterator:
-            yield response.row
+        for row in func(rows):
+            response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
+                row=[str(cell) for cell in row]
+            )
+            yield response
 
 
 async def run_server() -> None:

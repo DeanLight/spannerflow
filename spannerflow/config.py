@@ -23,7 +23,9 @@ class Config:
             {"name": "prost", "version": "0.13.3"},
             {"name": "prost-types", "version": "0.13.3"},
             {"name": "tonic", "version": "0.12.3"},
-            {"name": "ordered-float", "version": "4.3.0"},
+            {"name": "ordered-float", "version": "4.4.0"},
+            {"name": "tokio", "json": '{ version = "1.40.0", features = ["full"] }'},
+            {"name": "futures", "version": "0.3.31"},
         ]
     )
     RUST_BUILD_DEPEDENCIES: list[dict[str, str]] = field(
