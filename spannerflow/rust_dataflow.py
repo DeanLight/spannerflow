@@ -38,6 +38,7 @@ class RustDataflow:
         int: "DATA_TYPE_INT",
         float: "DATA_TYPE_FLOAT",
         bool: "DATA_TYPE_BOOL",
+        object: "DATA_TYPE_STRING",
     }
 
     def __init__(
@@ -316,11 +317,20 @@ class RustDataflow:
                     graph, node, anchor=anchor, in_iterate=in_iterate
                 )
             case "ie_map":
+                if callable(gr_node["in_schema"]):
+                    gr_node["in_schema"] = gr_node["in_schema"](gr_node["in_arity"])
+                if callable(gr_node["out_schema"]):
+                    gr_node["out_schema"] = gr_node["out_schema"](gr_node["out_arity"])
                 gr_node["schema_types"] = [
-                    self.PYTHON_TO_DATAFLOW_TYPES[t]
+                    (
+                        self.PYTHON_TO_DATAFLOW_TYPES[t]
+                        if not isinstance(t, tuple)
+                        else list(
+                            filter(lambda x: x in self.PYTHON_TO_DATAFLOW_TYPES, t)
+                        )[0]
+                    )
                     for t in gr_node["in_schema"] + gr_node["out_schema"]
                 ]
-                print(gr_node)
                 code = self.get_ie_map_code(
                     graph, node, anchor=anchor, in_iterate=in_iterate
                 )

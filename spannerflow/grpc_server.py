@@ -52,9 +52,9 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return
 
-        for row in func(rows):
+        for row in rows:
             response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
-                row=[str(cell) for cell in row]
+                row=[str(cell) for cell in func(*row)]
             )
             yield response
 
