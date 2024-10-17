@@ -30,7 +30,7 @@ jobs:
 
       - name: Build coverage file
         run: |
-          poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=spannerflow tests/ | tee pytest-coverage.txt
+          poetry run pytest tests/ | tee pytest-coverage.txt
 
       - name: Pytest coverage comment
         if: ${{ github.ref == 'refs/heads/main' }}
