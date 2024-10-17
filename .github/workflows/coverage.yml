@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Fetching base branch
+        run: |
+            git fetch -u origin ${{ github.head_ref }}:${{ github.head_ref }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v2
@@ -45,6 +48,11 @@ jobs:
         # if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           sed -i '/<!-- Pytest Coverage Comment:Begin -->/,/<!-- Pytest Coverage Comment:End -->/c\<!-- Pytest Coverage Comment:Begin -->\n\${{ steps.coverageComment.outputs.coverageHtml }}\n<!-- Pytest Coverage Comment:End -->' ./README.md
+      
+      - name: Pull latest changes
+        run: |
+          git config pull.rebase false
+          git pull origin ${{ github.head_ref }}
 
       - name: Commit & Push changes to Readme
         # if: ${{ github.ref == 'refs/heads/main' }}
@@ -52,4 +60,4 @@ jobs:
         with:
           message: Update coverage on Readme
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          branch: ${{ github.head_ref }}
