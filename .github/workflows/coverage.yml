@@ -52,6 +52,8 @@ jobs:
       - name: Pull latest changes
         run: |
           git config pull.rebase false
+          git config --global user.email "xx@xx.xx"
+          git config --global user.name "Github actions"
           git pull origin ${{ github.head_ref }} --allow-unrelated-histories
 
       - name: Commit & Push changes to Readme
