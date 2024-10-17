@@ -1,50 +1,24 @@
 import asyncio
-import inspect
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Callable
 
 import grpc
 
 from spannerflow.config import Config
 from spannerflow.dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
 
-_IE_FUNCTIONS = {}
-
-
 config = Config()
 
 
-def register_function(func):
-    signature = inspect.signature(func)
-    parameters = signature.parameters
-    mandatory_count = sum(
-        1
-        for p in parameters.values()
-        if p.default == inspect.Parameter.empty
-        and p.kind
-        not in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
-    )
-
-    if mandatory_count > 1 or len(parameters) == 0:
-        raise ValueError(
-            f"{func.__name__} must have at least one argument. and at most one not default argument"
-        )
-
-    _IE_FUNCTIONS[func.__name__] = func
-    return func
-
-
-## Example Functions Start ##
-@register_function
-def sync_greet(rows: list[list[str]]) -> list[list[str]]:
-    for row in rows:
-        row += ["Hello, World!"]
-    return rows
-
-
-## Example Functions End ##
-
-
 class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
+    def __init__(
+        self,
+        ie_functions: dict[
+            str, tuple[str, Callable[[Any], Any], list[type], list[type]]
+        ],
+    ):
+        super().__init__()
+        self._ie_functions = ie_functions
+
     async def RunIEFunction(
         self,
         request_iterator: AsyncGenerator[dataflow_pb2.RunIEFunctionRequest, None],  # type: ignore
@@ -57,12 +31,13 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
             if request.HasField("function_name"):
                 # Extract the function_name from the first request
                 function_name = request.function_name
-                func = _IE_FUNCTIONS.get(function_name)
+                func_tuple = self._ie_functions.get(function_name)
 
-                if func is None:
+                if func_tuple is None:
                     context.set_details(f"IE Function '{function_name}' not found.")
                     context.set_code(grpc.StatusCode.NOT_FOUND)
                     return  # Return early after setting the error
+                func = func_tuple[1]
 
             elif request.HasField("row"):
                 if func is None:
@@ -84,10 +59,12 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
             yield response
 
 
-async def run_server() -> None:
+async def run_server(
+    ie_functions: dict[str, tuple[str, Callable[[Any], Any], list[type], list[type]]],
+) -> None:
     server = grpc.aio.server()
     dataflow_pb2_grpc.add_IEFunctionServiceServicer_to_server(
-        IEFunctionService(), server
+        IEFunctionService(ie_functions), server
     )
 
     server.add_insecure_port(config.LISTEN_ADDRESS)
@@ -96,4 +73,4 @@ async def run_server() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_server())
+    asyncio.run(run_server(dict()))
