@@ -1,8 +1,6 @@
-use std::any::Any;
 use std::collections::HashMap;
 use std::env;
-use std::panic;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::Mutex;
 use csv;
 
 
@@ -386,7 +384,6 @@ impl DataflowService for MyDataflowService {
         let req = request.into_inner();
         
         if let Ok(vec) = run_dataflow_so(req.so_path, req.fn_name) {
-            println!("Ran dataflow successfully {:?}", vec);
             let responses: Vec<Result<RunDataflowResponse, Status>> = vec.iter().cloned().map(|row| {
                 Ok(RunDataflowResponse { row: row })
             }).collect();
