@@ -324,6 +324,7 @@ class RustDataflow:
                 gr_node["schema_types"] = [
                     (
                         self.PYTHON_TO_DATAFLOW_TYPES[t]
+                        # TODO Support multiple types
                         if not isinstance(t, tuple)
                         else list(
                             filter(lambda x: x in self.PYTHON_TO_DATAFLOW_TYPES, t)
