@@ -600,7 +600,7 @@ class RustDataflow:
         )
 
         output_text = template.render(
-            project_name=self._config.RUST_PROJECT_NAME,
+            project_name=f"{self._config.RUST_PROJECT_NAME}{self._query_id}",
             rust_file_name=f"{timestamp}.rs",
             dependencies=self._config.RUST_DEPENDENCIES,
             build_dependencies=self._config.RUST_BUILD_DEPEDENCIES,
@@ -615,7 +615,6 @@ class RustDataflow:
         flow_code = self.generate_graph_code(graph)
         reduced, _ = reduced_graph(graph)
         output_node, output_vars = self.get_output_data(reduced)
-        self._query_id += 1
         output_text = template.render(
             sources=self.get_sources_data(graph),
             flow_code=flow_code,
@@ -647,6 +646,7 @@ class RustDataflow:
             parents=True, exist_ok=True
         )
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self._query_id += 1
         self.create_cargo_toml(timestamp)
         self.create_rust_file(timestamp, graph)
         self.create_rust_build_file()
@@ -657,7 +657,7 @@ class RustDataflow:
             self._config.RUST_SO_BUILD_LOG_PATH,
         )
         # Determine file extension based on the platform
-        crate_name = self._config.RUST_PROJECT_NAME
+        crate_name = f"{self._config.RUST_PROJECT_NAME}{self._query_id}"
         if os.name == "posix":  # Linux/macOS
             if os.uname().sysname == "Darwin":
                 extension = ".dylib"  # macOS

@@ -400,7 +400,6 @@ impl DataflowService for MyDataflowService {
         else {
             return Err(Status::internal("Failed to run dataflow"));
         }
-
     }
 }
 
@@ -424,22 +423,28 @@ fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<String>>,
             eprintln!("Failed to load library from path {}: {:?}", so_path, e);
             Status::not_found("Failed to load shared library")
         })?;
-        let function: Symbol<unsafe extern "C" fn(&HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>> = lib.get(fn_name.as_bytes()).map_err(|e| {
-            eprintln!("Failed to get function {}: {:?}", fn_name, e);
-            Status::not_found("Failed to get function from library")
-        })?;
-        let collections_guard: MutexGuard<HashMap<String, Vec<Vec<String>>>> = COLLECTIONS.lock().unwrap();
-        let result: Result<Vec<Vec<String>>, Box<dyn Any + Send>> = panic::catch_unwind(|| {
-            let output = function(&*collections_guard);
-            output
-        });
-        std::mem::drop(lib);
-        match result {
-            Ok(output) => Ok(output),
-            Err(_) => {
-                eprintln!("Panic occurred while running the dataflow function");
-                Err(Status::internal("Panic occurred during execution"))
+        let function: Symbol<unsafe extern "C" fn(&HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>> = match lib.get(fn_name.as_bytes()) {
+            Ok(func) => func,
+            Err(e) => {
+                eprintln!("Failed to get function {}: {:?}", fn_name, e);
+                std::mem::drop(lib); // Drop the library before returning
+                return Err(Status::not_found("Failed to get function from library"));
             }
-        }   
+        };
+
+        // Acquire the lock on collections
+        let collections_guard = match COLLECTIONS.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                eprintln!("Failed to lock collections");
+                std::mem::drop(lib);
+                return Err(Status::internal("Failed to lock collections"));
+            }
+        };
+
+        let output: Vec<Vec<String>> = function(&*collections_guard);
+        // Drop the library immediately after using it
+        std::mem::drop(lib);
+        return Ok(output)
     }
 }
