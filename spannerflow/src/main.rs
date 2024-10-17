@@ -1,5 +1,7 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::env;
+use std::panic;
 use std::sync::{Mutex, MutexGuard};
 use csv;
 
@@ -422,15 +424,22 @@ fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<String>>,
             eprintln!("Failed to load library from path {}: {:?}", so_path, e);
             Status::not_found("Failed to load shared library")
         })?;
-
         let function: Symbol<unsafe extern "C" fn(&HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>> = lib.get(fn_name.as_bytes()).map_err(|e| {
             eprintln!("Failed to get function {}: {:?}", fn_name, e);
             Status::not_found("Failed to get function from library")
         })?;
         let collections_guard: MutexGuard<HashMap<String, Vec<Vec<String>>>> = COLLECTIONS.lock().unwrap();
-        let output: Vec<Vec<String>> = function(&*collections_guard);
-        println!("{:?}", output);
+        let result: Result<Vec<Vec<String>>, Box<dyn Any + Send>> = panic::catch_unwind(|| {
+            let output = function(&*collections_guard);
+            output
+        });
         std::mem::drop(lib);
-        return Ok(output)
+        match result {
+            Ok(output) => Ok(output),
+            Err(_) => {
+                eprintln!("Panic occurred while running the dataflow function");
+                Err(Status::internal("Panic occurred during execution"))
+            }
+        }   
     }
 }

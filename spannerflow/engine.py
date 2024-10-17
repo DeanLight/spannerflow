@@ -77,7 +77,11 @@ class Engine:
             )
             stub.DeleteRow(request)
 
-    def add_collection(self, collection_name: str, schema: list[int]) -> None:
+    def add_collection(
+        self,
+        collection_name: str,
+        schema: list[dataflow_pb2.DataType],  # type: ignore
+    ) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.AddCollectionRequest(  # type: ignore

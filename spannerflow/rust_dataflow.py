@@ -338,6 +338,9 @@ class RustDataflow:
     ) -> str:
         prev_nodes = list(graph.pred[node])
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
+        prev_node_str = self.get_prev_node_str(
+            prev_nodes[0], anchor=anchor, in_iterate=in_iterate
+        )
         match graph.nodes[node]["name"]:
             case "not":
                 if len(prev_nodes) != 1:
@@ -351,9 +354,19 @@ class RustDataflow:
                 code = f"let {node_str} = {prev_node_str}.map(|{get_node_schema(graph, prev_nodes[0])}| ({get_node_schema(graph, prev_nodes[0])}, !{get_node_schema(graph, prev_nodes[0])}));"
             case _:
                 ie_map_template = self._template_env.get_template("ie_map.rs.jinja2")
-                code = ie_map_template.render()
-                raise ValueError(
-                    f"Unsupported IE Map function: {graph.nodes[node]['name']}"
+                code = ie_map_template.render(
+                    output_node=node_str,
+                    prev_node=prev_node_str,
+                    grpc_address=f"http://{self._config.LISTEN_ADDRESS}",
+                    function_name=graph.nodes[node]["name"],
+                    in_schema=self.get_col_schema(
+                        graph.nodes[node]["schema"][
+                            : len(graph.nodes[node]["in_schema"])
+                        ]
+                    ),
+                    out_schema_len=len(graph.nodes[node]["out_schema"]),
+                    in_schema_len=len(graph.nodes[node]["in_schema"]),
+                    out_schema_types=graph.nodes[node]["schema_types"],
                 )
         return code
 
