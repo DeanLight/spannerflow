@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, AsyncGenerator, Callable
 
 import grpc
@@ -29,6 +28,10 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
         rows = []
         async for request in request_iterator:
             if request.HasField("function_name"):
+                if function_name is not None:
+                    context.set_details("Function name already provided.")
+                    context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+                    return
                 # Extract the function_name from the first request
                 function_name = request.function_name
                 func_tuple = self._ie_functions.get(function_name)
@@ -70,7 +73,3 @@ async def run_server(
     server.add_insecure_port(config.LISTEN_ADDRESS)
     await server.start()
     await server.wait_for_termination()  # Keep the server running
-
-
-if __name__ == "__main__":
-    asyncio.run(run_server(dict()))

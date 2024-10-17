@@ -186,3 +186,5 @@ spannerflow/logs
 protoc/
 rust/
 .vscode/
+pytest.xml
+pytest-coverage.txt
