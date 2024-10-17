@@ -52,7 +52,7 @@ jobs:
       - name: Pull latest changes
         run: |
           git config pull.rebase false
-          git pull origin ${{ github.head_ref }}
+          git pull origin ${{ github.head_ref }} --allow-unrelated-histories
 
       - name: Commit & Push changes to Readme
         # if: ${{ github.ref == 'refs/heads/main' }}
