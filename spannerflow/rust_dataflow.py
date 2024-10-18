@@ -123,9 +123,9 @@ class RustDataflow:
         if len(prev_nodes) != 2:
             raise ValueError("Node is not 2-join: ", node)
         join1, join2 = list(graph.pred[node])
-        out_node_str = f"node_{node}"
-        join1_str = f"node_{join1}"
-        join2_str = f"node_{join2}"
+        out_node_str = self.get_node_str(node)
+        join1_str = self.get_node_str(join1)
+        join2_str = self.get_node_str(join2)
 
         if in_iterate:
             if node == anchor:
@@ -192,31 +192,19 @@ class RustDataflow:
             return str(anchor)
         return f"node_{node}"
 
-    def generate_node_code(
-        self,
-        graph: nx.DiGraph,
-        node: str | int,
-        anchor: str | int | None = None,
-        in_iterate: bool = False,
-    ) -> str:
+    def prepare_node(self, graph: nx.DiGraph, node: str | int) -> None:
         gr_node = graph.nodes[node]
         preds = [graph.nodes[key] for key in graph.pred[node].keys()]
         match gr_node["op"]:
             case "get_rel":
                 gr_node["schema_types"] = self.get_input_schema_types(node)
-                code = self.get_get_rel_code(
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
-            case "rename":
+            case "rename" | "select":
                 if len(preds) != 1:
                     raise ValueError(
                         "Rename node has invalid number of predecessors: ",
                         (len(preds), node),
                     )
                 gr_node["schema_types"] = preds[0]["schema_types"]
-                code = self.get_rename_code(
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
             case "project":
                 if len(preds) != 1:
                     raise ValueError(
@@ -228,13 +216,10 @@ class RustDataflow:
                     pred["schema_types"][pred["schema"].index(col)]
                     for col in gr_node["schema"]
                 ]
-                code = self.get_project_code(
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
-            case "join":
+            case "product" | "join":
                 if len(preds) != 2:
                     raise ValueError(
-                        "Join node has invalid number of predecessors: ",
+                        f"Product {gr_node['op']} has invalid number of predecessors: ",
                         (len(preds), node),
                     )
                 schema_types = []
@@ -245,26 +230,9 @@ class RustDataflow:
                     except ValueError:
                         index = preds[1]["schema"].index(x)
                         schema_types.append(preds[1]["schema_types"][index])
-
                 gr_node["schema_types"] = schema_types
-                code = self.get_join_code(
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
-            case "select":
-                if len(preds) != 1:
-                    raise ValueError(
-                        "Select node has invalid number of predecessors: ",
-                        (len(preds), node),
-                    )
-                gr_node["schema_types"] = preds[0]["schema_types"]
-                code = self.get_select_code(
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
             case "union":
                 gr_node["schema_types"] = preds[0]["schema_types"]
-                code = self.get_union_code(
-                    graph, node, in_iterate=in_iterate, anchor=anchor
-                )
             case "groupby":
                 if len(preds) != 1:
                     raise ValueError(
@@ -280,35 +248,11 @@ class RustDataflow:
                     else:
                         schema_types.append("DATA_TYPE_FLOAT")
                 gr_node["schema_types"] = schema_types
-                code = self.get_groupby_code(
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
             case "get_const":
                 gr_node["schema_types"] = [
                     self.PYTHON_TO_DATAFLOW_TYPES[type(const)]
                     for const in gr_node["const_dict"].values()
                 ]
-                code = self.get_get_const_code(
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
-            case "product":
-                if len(preds) != 2:
-                    raise ValueError(
-                        "Product node has invalid number of predecessors: ",
-                        (len(preds), node),
-                    )
-                schema_types = []
-                for x in gr_node["schema"]:
-                    try:
-                        index = preds[0]["schema"].index(x)
-                        schema_types.append(preds[0]["schema_types"][index])
-                    except ValueError:
-                        index = preds[1]["schema"].index(x)
-                        schema_types.append(preds[1]["schema_types"][index])
-                gr_node["schema_types"] = schema_types
-                code = self.get_join_code(  # not a bug, same implementation as join
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
             case "ie_map":
                 if callable(gr_node["in_schema"]):
                     gr_node["in_schema"] = gr_node["in_schema"](gr_node["in_arity"])
@@ -325,13 +269,35 @@ class RustDataflow:
                     )
                     for t in gr_node["in_schema"] + gr_node["out_schema"]
                 ]
-                code = self.get_ie_map_code(
-                    graph, node, anchor=anchor, in_iterate=in_iterate
-                )
             case _:
                 raise ValueError(f"Unsupported operation: {gr_node['op']}")
 
-        return code
+    def generate_node_code(
+        self,
+        graph: nx.DiGraph,
+        node: str | int,
+        anchor: str | int | None = None,
+        in_iterate: bool = False,
+    ) -> str:
+        gr_node = graph.nodes[node]
+        self.prepare_node(graph, node)
+        op_to_code_generator = {
+            "get_rel": self.get_get_rel_code,
+            "rename": self.get_rename_code,
+            "project": self.get_project_code,
+            "join": self.get_join_code,
+            "select": self.get_select_code,
+            "union": self.get_union_code,
+            "groupby": self.get_groupby_code,
+            "get_const": self.get_get_const_code,
+            "product": self.get_join_code,
+            "ie_map": self.get_ie_map_code,
+        }
+        if gr_node["op"] in op_to_code_generator:
+            raise ValueError(f"Unsupported operation: {gr_node['op']}")
+        return op_to_code_generator[gr_node["op"]](
+            graph, node, anchor=anchor, in_iterate=in_iterate
+        )
 
     def get_ie_map_code(
         self,
