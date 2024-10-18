@@ -76,32 +76,27 @@ class RustDataflow:
         self,
         graph: nx.DiGraph,
     ) -> dict[str | int, dict[str, str | int | list[str]]]:
-        return {
-            source: {
+        data = dict()
+        for source in find_sources(graph):
+            gr_node = graph.nodes[source]
+            op = gr_node["op"]
+            data[source] = {
                 "name": source,
-                "schema": (
-                    self.get_input_schema(source)
-                    if "schema_types" not in graph.nodes[source]
-                    else [
-                        self.DATAFLOW_TO_RUST_TYPES[t]
-                        for t in graph.nodes[source]["schema_types"]
-                    ]
-                ),
-                "op": graph.nodes[source]["op"],
-                "consts": (
-                    self._engine._serialize_row(
-                        graph.nodes[source]["schema_types"],
-                        [
-                            graph.nodes[source]["const_dict"][col]
-                            for col in graph.nodes[source]["schema"]
-                        ],
-                    )
-                    if graph.nodes[source]["op"] == "get_const"
-                    else []
-                ),
+                "op": op,
             }
-            for source in find_sources(graph)
-        }
+
+            if "schema_types" not in gr_node:
+                data[source]["schema"] = self.get_input_schema(source)
+            else:
+                data[source]["schema"] = [
+                    self.DATAFLOW_TO_RUST_TYPES[t] for t in gr_node["schema_types"]
+                ]
+                if op == "get_const":
+                    data[source]["consts"] = self._engine._serialize_row(
+                        gr_node["schema_types"],
+                        [gr_node["const_dict"][col] for col in gr_node["schema"]],
+                    )
+        return data
 
     @staticmethod
     def get_col_schema(cols: list[str]) -> str:
@@ -119,9 +114,6 @@ class RustDataflow:
         anchor: str | int | None = None,
         in_iterate: bool = False,
     ) -> str:
-        prev_nodes = list(graph.pred[node])
-        if len(prev_nodes) != 2:
-            raise ValueError("Node is not 2-join: ", node)
         join1, join2 = list(graph.pred[node])
         out_node_str = self.get_node_str(node)
         join1_str = self.get_node_str(join1)
@@ -145,10 +137,11 @@ class RustDataflow:
             get_minus_cols(graph, join2, common_cols)
         )
         out_join1_uncommon_schema = (
-            join1_uncommon_schema if (not join1_uncommon_schema == "0") else "_"
+            join1_uncommon_schema if join1_uncommon_schema != "0" else "_"
         )
+
         out_join2_uncommon_schema = (
-            join2_uncommon_schema if (not join2_uncommon_schema == "0") else "_"
+            join2_uncommon_schema if join2_uncommon_schema != "0" else "_"
         )
 
         return f"""let {out_node_str} = {join1_str}.map(|{get_node_schema(graph, join1)}| ({common_schema}, {join1_uncommon_schema}))
@@ -162,12 +155,11 @@ class RustDataflow:
         anchor: str | int | None = None,
         in_iterate: bool = False,
     ) -> str:
-        preds = list(
-            filter(
-                lambda pred: "reduced" not in graph.get_edge_data(pred, node),
-                graph.pred[node],
-            )
-        )
+        preds = [
+            pred
+            for pred in graph.pred[node]
+            if "reduced" not in graph.get_edge_data(pred, node)
+        ]
 
         prev_node1_str = self.get_node_str(
             preds[0], anchor=anchor, in_iterate=in_iterate
@@ -176,14 +168,10 @@ class RustDataflow:
 
         if len(preds) == 1:
             return f"let {node_str} = {prev_node1_str};"
-        elif len(preds) == 2:
-            prev_node2_str = self.get_node_str(
-                preds[1], anchor=anchor, in_iterate=in_iterate
-            )
-            return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
-        raise ValueError(
-            "Union node has invalid number of predecessors: ", (len(preds), node)
+        prev_node2_str = self.get_node_str(
+            preds[1], anchor=anchor, in_iterate=in_iterate
         )
+        return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
 
     def get_node_str(
         self, node: str | int, anchor: str | int | None = None, in_iterate: bool = False
@@ -192,36 +180,60 @@ class RustDataflow:
             return str(anchor)
         return f"node_{node}"
 
-    def prepare_node(self, graph: nx.DiGraph, node: str | int) -> None:
+    def validate_node(self, graph: nx.DiGraph, node: str | int) -> None:
         gr_node = graph.nodes[node]
         preds = [graph.nodes[key] for key in graph.pred[node].keys()]
         match gr_node["op"]:
-            case "get_rel":
-                gr_node["schema_types"] = self.get_input_schema_types(node)
-            case "rename" | "select":
-                if len(preds) != 1:
-                    raise ValueError(
-                        "Rename node has invalid number of predecessors: ",
-                        (len(preds), node),
-                    )
-                gr_node["schema_types"] = preds[0]["schema_types"]
-            case "project":
-                if len(preds) != 1:
-                    raise ValueError(
-                        "Project node has invalid number of predecessors: ",
-                        (len(preds), node),
-                    )
-                pred = preds[0]
-                gr_node["schema_types"] = [
-                    pred["schema_types"][pred["schema"].index(col)]
-                    for col in gr_node["schema"]
+            case "union":
+                preds = [
+                    pred
+                    for pred in graph.pred[node]
+                    if "reduced" not in graph.get_edge_data(pred, node)
                 ]
+                if len(preds) not in (1, 2):
+                    raise ValueError(
+                        "Union node has invalid number of predecessors: ",
+                        (len(preds), node),
+                    )
+            case "rename" | "select" | "project" | "groupby":
+                if len(preds) != 1:
+                    raise ValueError(
+                        f"{gr_node['op']} node has invalid number of predecessors: ",
+                        (len(preds), node),
+                    )
             case "product" | "join":
                 if len(preds) != 2:
                     raise ValueError(
                         f"Product {gr_node['op']} has invalid number of predecessors: ",
                         (len(preds), node),
                     )
+            case "ie_map":
+                if gr_node["name"] == "not":
+                    if len(preds) != 1:
+                        raise ValueError(
+                            "Not node has invalid number of predecessors: ",
+                            (len(preds), node),
+                        )
+            case "get_const" | "get_rel":
+                return
+            case _:
+                raise ValueError(f"Unsupported operation: {gr_node['op']}")
+
+    def prepare_node(self, graph: nx.DiGraph, node: str | int) -> None:
+        gr_node = graph.nodes[node]
+        preds = [graph.nodes[key] for key in graph.pred[node].keys()]
+        match gr_node["op"]:
+            case "get_rel":
+                gr_node["schema_types"] = self.get_input_schema_types(node)
+            case "rename" | "select" | "union":
+                gr_node["schema_types"] = preds[0]["schema_types"]
+            case "project":
+                pred = preds[0]
+                gr_node["schema_types"] = [
+                    pred["schema_types"][pred["schema"].index(col)]
+                    for col in gr_node["schema"]
+                ]
+            case "product" | "join":
                 schema_types = []
                 for x in gr_node["schema"]:
                     try:
@@ -231,14 +243,7 @@ class RustDataflow:
                         index = preds[1]["schema"].index(x)
                         schema_types.append(preds[1]["schema_types"][index])
                 gr_node["schema_types"] = schema_types
-            case "union":
-                gr_node["schema_types"] = preds[0]["schema_types"]
             case "groupby":
-                if len(preds) != 1:
-                    raise ValueError(
-                        "Group By node has invalid number of predecessors: ",
-                        (len(preds), node),
-                    )
                 schema_types = []
                 for index, agg in enumerate(gr_node["agg"]):
                     if agg is None:
@@ -280,6 +285,7 @@ class RustDataflow:
         in_iterate: bool = False,
     ) -> str:
         gr_node = graph.nodes[node]
+        self.validate_node(graph, node)
         self.prepare_node(graph, node)
         op_to_code_generator = {
             "get_rel": self.get_get_rel_code,
@@ -293,7 +299,7 @@ class RustDataflow:
             "product": self.get_join_code,
             "ie_map": self.get_ie_map_code,
         }
-        if gr_node["op"] in op_to_code_generator:
+        if gr_node["op"] not in op_to_code_generator:
             raise ValueError(f"Unsupported operation: {gr_node['op']}")
         return op_to_code_generator[gr_node["op"]](
             graph, node, anchor=anchor, in_iterate=in_iterate
@@ -313,11 +319,6 @@ class RustDataflow:
         )
         match graph.nodes[node]["name"]:
             case "not":
-                if len(prev_nodes) != 1:
-                    raise ValueError(
-                        "Not node has invalid number of predecessors: ",
-                        (len(prev_nodes), node),
-                    )
                 prev_node_str = self.get_node_str(
                     prev_nodes[0], anchor=anchor, in_iterate=in_iterate
                 )

@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import networkx as nx
 import pytest
 
 from spannerflow.config import Config
@@ -63,3 +64,34 @@ def test_get_node_str(rust_dataflow):
         rust_dataflow.get_node_str(int_anchor, anchor=int_anchor, in_iterate=False)
         == f"node_{int_anchor}"
     )
+
+
+def test_get_sources_data(rust_dataflow):
+    with patch.object(rust_dataflow._engine, "get_collections") as mock_get_collections:
+        mock_get_collections.return_value = {
+            "X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"],
+        }
+        graph = nx.DiGraph()
+        graph.add_nodes_from(
+            [
+                ("X", {"op": "get_rel"}),
+                (
+                    "Y",
+                    {
+                        "op": "get_const",
+                        "schema": ["col1"],
+                        "schema_types": ["DATA_TYPE_FLOAT"],
+                        "const_dict": {"col1": 1.0},
+                    },
+                ),
+            ]
+        )
+        assert rust_dataflow.get_sources_data(graph) == {
+            "X": {"name": "X", "op": "get_rel", "schema": ["i32", "String"]},
+            "Y": {
+                "name": "Y",
+                "op": "get_const",
+                "schema": ["OrderedFloat<f32>"],
+                "consts": ["1.0"],
+            },
+        }
