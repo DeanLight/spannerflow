@@ -12,21 +12,21 @@ def find_output(graph: nx.DiGraph) -> str | int:
     return outputs[0]
 
 
-def change_node_key(G: nx.DiGraph, old_key: str | int, new_key: str | int) -> None:
+def change_node_key(graph: nx.DiGraph, old_key: str | int, new_key: str | int) -> None:
     # Add a new node with the new key, and copy the attributes of the old node
-    G.add_node(new_key, **G.nodes[old_key])
+    graph.add_node(new_key, **graph.nodes[old_key])
 
     # Reconnect the edges from the old node to the new node
-    for neighbor in G.neighbors(old_key):
-        G.add_edge(new_key, neighbor)
+    for neighbor in graph.neighbors(old_key):
+        graph.add_edge(new_key, neighbor)
 
     # If it's a directed graph, also handle incoming edges
-    if G.is_directed():
-        for predecessor in G.predecessors(old_key):
-            G.add_edge(predecessor, new_key)
+    if graph.is_directed():
+        for predecessor in graph.predecessors(old_key):
+            graph.add_edge(predecessor, new_key)
 
     # Remove the old node
-    G.remove_node(old_key)
+    graph.remove_node(old_key)
 
 
 def get_cycles(graph: nx.DiGraph) -> dict[str | int, nx.DiGraph]:
@@ -119,9 +119,11 @@ def find_egress_node(graph: nx.DiGraph, cycle) -> str | int:
     raise Exception("No egress node found in the cycle")
 
 
-def create_iter_graph(graph: nx.DiGraph, cycle, anchor) -> nx.DiGraph:
+def create_iter_graph(
+    graph: nx.DiGraph, cycle: nx.DiGraph, anchor: str | int
+) -> nx.DiGraph:
     ingress = find_ingress_nodes(graph, cycle)
-    iter_graph = graph.subgraph(list(cycle.nodes) + (ingress) + [anchor]).copy()
+    iter_graph = graph.subgraph(list(cycle.nodes) + ingress + [anchor]).copy()
     change_node_key(iter_graph, anchor, f"iter_{anchor}")
     iter_graph.nodes[f"iter_{anchor}"]["anchor"] = True
     return iter_graph

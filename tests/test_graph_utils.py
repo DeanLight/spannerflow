@@ -3,11 +3,14 @@ import pytest
 
 from spannerflow.graph_utils import (
     change_node_key,
+    create_iter_graph,
+    find_egress_node,
     find_output,
     find_sources,
     get_common_cols,
     get_minus_cols,
     get_node_schema,
+    traverse_cycle,
 )
 
 
@@ -97,3 +100,37 @@ def test_get_minus_cols():
     assert get_minus_cols(graph, 2, ["col1", "col2"]) == ["col3"]
     assert get_minus_cols(graph, 2, ["col2"]) == ["col3"]
     assert get_minus_cols(graph, 2, ["col3"]) == ["col2"]
+
+
+def test_traverse_cycle():
+    graph = nx.DiGraph()
+    graph.add_edges_from([(1, 2), (2, 3), (3, 1)])
+    anchor = 1
+    assert traverse_cycle(graph, anchor) == [2, 3, 1]
+
+
+def test_find_egress_node():
+    graph = nx.DiGraph()
+    graph.add_edges_from(
+        [
+            (1, 2),
+            (2, 3),
+            (3, 1),
+        ]
+    )
+    cycle = [1, 2, 3]
+    with pytest.raises(Exception):
+        find_egress_node(graph, cycle)
+    graph.add_edge(3, 4)
+    assert find_egress_node(graph, cycle) == 3
+
+
+def test_create_iter_graph():
+    graph = nx.DiGraph()
+    graph.add_edges_from([(0, 1), (1, 2), (2, 3), (3, 1), (3, 4)])
+    cycle = nx.DiGraph()
+    cycle.add_edges_from([(1, 2), (2, 3), (3, 1)])
+    anchor = 3
+    iter_graph = create_iter_graph(graph, cycle, anchor)
+    assert set(iter_graph.nodes.keys()) == {0, 1, 2, "iter_3"}
+    assert iter_graph.nodes["iter_3"]["anchor"] is True

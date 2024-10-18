@@ -288,14 +288,14 @@ class RustDataflow:
         self.validate_node(graph, node)
         self.prepare_node(graph, node)
         op_to_code_generator = {
-            "get_rel": self.get_get_rel_code,
+            "get_rel": self.get_from_input_code,
             "rename": self.get_rename_code,
             "project": self.get_project_code,
             "join": self.get_join_code,
             "select": self.get_select_code,
             "union": self.get_union_code,
             "groupby": self.get_groupby_code,
-            "get_const": self.get_get_const_code,
+            "get_const": self.get_from_input_code,
             "product": self.get_join_code,
             "ie_map": self.get_ie_map_code,
         }
@@ -341,17 +341,6 @@ class RustDataflow:
                 )
         return code
 
-    def get_get_const_code(
-        self,
-        graph: nx.DiGraph,
-        node: str | int,
-        anchor: str | int | None = None,
-        in_iterate: bool = False,
-    ) -> str:
-        node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
-        code = f"let {node_str} = input_{node}.to_collection(scope);"
-        return code
-
     def get_project_code(
         self,
         graph: nx.DiGraph,
@@ -366,15 +355,10 @@ class RustDataflow:
             prev_nodes[0], anchor=anchor, in_iterate=in_iterate
         )
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
+        prev_schema = get_node_schema(graph, prev_nodes[0])
+        return f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {schema});"
 
-        if prev_nodes:
-            prev_schema = get_node_schema(graph, prev_nodes[0])
-            code = f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {schema});"
-        else:
-            code = ""
-        return code
-
-    def get_get_rel_code(
+    def get_from_input_code(
         self,
         graph: nx.DiGraph,
         node: str | int,
@@ -382,8 +366,7 @@ class RustDataflow:
         in_iterate: bool = False,
     ) -> str:
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
-        code = f"let {node_str} = input_{node}.to_collection(scope);"
-        return code
+        return f"let {node_str} = input_{node}.to_collection(scope);"
 
     def get_rename_code(
         self,
@@ -400,8 +383,7 @@ class RustDataflow:
         )
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
 
-        code = f"let {node_str} = {prev_node_str}.map(|{schema}| {schema});"
-        return code
+        return f"let {node_str} = {prev_node_str}.map(|{schema}| {schema});"
 
     def get_select_code(
         self,
@@ -426,8 +408,7 @@ class RustDataflow:
             preds = [f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples]
         else:
             raise ValueError(f"Unsupported theta join: {theta}. {dir(theta)}")
-        code = f"let {node_str} = {prev_node_str}.filter(|{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
-        return code
+        return f"let {node_str} = {prev_node_str}.filter(|{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
 
     def update_repeatable_cols_in_schema(self, schema: list[str]) -> list[str]:
         repeatable_cols: dict[str, list[int]] = {}

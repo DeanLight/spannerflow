@@ -95,3 +95,22 @@ def test_get_sources_data(rust_dataflow):
                 "consts": ["1.0"],
             },
         }
+
+
+def test_get_from_input_code(rust_dataflow):
+    graph = nx.DiGraph()
+    graph.add_node(
+        1,
+        op="get_const",
+        schema=["col1"],
+        schema_types=["DATA_TYPE_FLOAT"],
+        const_dict={"col1": 1.0},
+    )
+    node = 1
+    anchor = None
+    in_iterate = False
+
+    assert (
+        rust_dataflow.get_from_input_code(graph, node, anchor, in_iterate)
+        == "let node_1 = input_1.to_collection(scope);"
+    )
