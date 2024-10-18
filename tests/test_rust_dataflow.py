@@ -19,7 +19,7 @@ def rust_dataflow():
         return instance
 
 
-def test_get_input_schema_types(rust_dataflow):
+def test_dataflow_get_input_schema_types(rust_dataflow):
     with patch.object(rust_dataflow._engine, "get_collections") as mock_get_collections:
         mock_get_collections.return_value = {"X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"]}
         assert rust_dataflow.get_input_schema_types("X") == [
@@ -28,19 +28,19 @@ def test_get_input_schema_types(rust_dataflow):
         ]
 
 
-def test_get_input_schema(rust_dataflow):
+def test_dataflow_get_input_schema(rust_dataflow):
     with patch.object(rust_dataflow._engine, "get_collections") as mock_get_collections:
         mock_get_collections.return_value = {"X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"]}
         assert rust_dataflow.get_input_schema("X") == ["i32", "String"]
 
 
-def test_get_col_schema(rust_dataflow):
+def test_dataflow_get_col_schema(rust_dataflow):
     assert rust_dataflow.get_col_schema(["col1", "col2"]) == "(col1, col2)"
     assert rust_dataflow.get_col_schema(["col1"]) == "col1"
     assert rust_dataflow.get_col_schema([]) == "0"
 
 
-def test_get_node_str(rust_dataflow):
+def test_dataflow_get_node_str(rust_dataflow):
     str_anchor = "ANCHOR"
     assert (
         rust_dataflow.get_node_str(1, anchor=str_anchor, in_iterate=False) == "node_1"
@@ -66,7 +66,7 @@ def test_get_node_str(rust_dataflow):
     )
 
 
-def test_get_sources_data(rust_dataflow):
+def test_dataflow_get_sources_data(rust_dataflow):
     with patch.object(rust_dataflow._engine, "get_collections") as mock_get_collections:
         mock_get_collections.return_value = {
             "X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"],
@@ -97,7 +97,7 @@ def test_get_sources_data(rust_dataflow):
         }
 
 
-def test_get_from_input_code(rust_dataflow):
+def test_dataflow_get_from_input_code(rust_dataflow):
     graph = nx.DiGraph()
     graph.add_node(
         1,
@@ -114,3 +114,14 @@ def test_get_from_input_code(rust_dataflow):
         rust_dataflow.get_from_input_code(graph, node, anchor, in_iterate)
         == "let node_1 = input_1.to_collection(scope);"
     )
+
+
+def test_dataflow___exit__(rust_dataflow):
+    with patch.object(rust_dataflow, "_stop_rust_server") as mock_stop_rust_server:
+        rust_dataflow._is_server_running = False
+        rust_dataflow.__exit__(None, None, None)
+        mock_stop_rust_server.assert_not_called()
+
+        rust_dataflow._is_server_running = True
+        rust_dataflow.__exit__(None, None, None)
+        mock_stop_rust_server.assert_called_once()

@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 from typing import Any, Generator
 
@@ -14,7 +15,7 @@ from spannerflow.graph_utils import find_output
 
 @singleton
 class Engine:
-    def __init__(self, config: Config = Config(), allow_reuse_server: bool = False):
+    def __init__(self, config: Config = Config()):
         from spannerflow.rust_dataflow import RustDataflow
 
         self._config = config
@@ -128,8 +129,12 @@ class Engine:
                 case dataflow_pb2.DataType.DATA_TYPE_INT:  # type: ignore
                     new_row.append(int(value))
                 case dataflow_pb2.DataType.DATA_TYPE_FLOAT:  # type: ignore
+                    if math.isnan(float(value)):
+                        raise ValueError(f"Expected float, got {value}")
                     new_row.append(float(value))
                 case dataflow_pb2.DataType.DATA_TYPE_BOOL:  # type: ignore
+                    if value not in ["true", "false"]:
+                        raise ValueError(f"Expected bool, got {value}")
                     new_row.append(value.lower() == "true")
                 case _:
                     raise ValueError(f"Unknown data type: {col_type}")
@@ -149,7 +154,7 @@ class Engine:
                         raise ValueError(f"Expected int, got {type(value)}")
                     new_row.append(str(value))
                 case dataflow_pb2.DataType.DATA_TYPE_FLOAT:  # type: ignore
-                    if not isinstance(value, (float, int)) or value == float("nan"):
+                    if not isinstance(value, (float, int)) or math.isnan(value):
                         raise ValueError(
                             f"Expected float/int, got {value} ({type(value)})"
                         )
