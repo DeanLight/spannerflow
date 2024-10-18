@@ -10,29 +10,28 @@ from spannerflow.rust_dataflow import RustDataflow
 
 @pytest.fixture
 def rust_dataflow():
+    Engine._instance = None
     config = Config()
     with patch(
-        "spannerflow.engine.Engine.__new__", return_value=MagicMock(spec=Engine)
+        "spannerflow.engine.Engine.__init__", return_value=MagicMock(spec=Engine)
     ) as mock_engine:
         instance = RustDataflow(config=config, engine=mock_engine)
         return instance
 
 
 def test_get_input_schema_types(rust_dataflow):
-    rust_dataflow._engine.get_collections.return_value = {
-        "X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"]
-    }
-    assert rust_dataflow.get_input_schema_types("X") == [
-        "DATA_TYPE_INT",
-        "DATA_TYPE_STRING",
-    ]
+    with patch.object(rust_dataflow._engine, "get_collections") as mock_get_collections:
+        mock_get_collections.return_value = {"X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"]}
+        assert rust_dataflow.get_input_schema_types("X") == [
+            "DATA_TYPE_INT",
+            "DATA_TYPE_STRING",
+        ]
 
 
 def test_get_input_schema(rust_dataflow):
-    rust_dataflow._engine.get_collections.return_value = {
-        "X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"]
-    }
-    assert rust_dataflow.get_input_schema("X") == ["i32", "String"]
+    with patch.object(rust_dataflow._engine, "get_collections") as mock_get_collections:
+        mock_get_collections.return_value = {"X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"]}
+        assert rust_dataflow.get_input_schema("X") == ["i32", "String"]
 
 
 def test_get_col_schema(rust_dataflow):
