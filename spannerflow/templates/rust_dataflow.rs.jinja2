@@ -83,16 +83,16 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
             let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['schema'] %}{{ element }}{% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
         {% endfor %}
             worker.dataflow(|scope| {
-            {% for node in top_sort %}
-                {{ flow_code[node] }}{% endfor %}
+            {% for node_code in flow_code %}
+                {{ node_code }}{% endfor %}
                 let result = Arc::clone(&result); 
-                node_{{output_node}}.inspect(move |x| {
+                {{ output_node_str }}.inspect(move |x| {
                     let cloned_x = x.clone();
                     result.lock().unwrap().push(tuple_to_vec_string!(
-                        {% if output_vars == 1%}
+                        {% if output_vars_count == 1%}
                             cloned_x.0
                         {% else %}
-                            {% for var in range(output_vars) %}
+                            {% for var in range(output_vars_count) %}
                             cloned_x.0.{{ var }}{% if not loop.last %}, {% endif %}{% endfor %}
                         {% endif %}
                     ));
@@ -109,11 +109,4 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
             {% endfor %}
         });
         return output.lock().unwrap().clone();
-}
-
-
-#[no_mangle]
-pub extern "C" fn query_schema_types_{{query_id}}() -> Vec<String>{
-
-    return vec![{% for col_type in output_schema_types %}"{{ col_type }}".to_string(){% if not loop.last %}, {% endif %}{% endfor%}];
 }

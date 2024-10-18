@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import networkx as nx
 import pytest
 
 from spannerflow.config import Config
@@ -38,16 +37,6 @@ def test_get_col_schema(rust_dataflow):
     assert rust_dataflow.get_col_schema(["col1", "col2"]) == "(col1, col2)"
     assert rust_dataflow.get_col_schema(["col1"]) == "col1"
     assert rust_dataflow.get_col_schema([]) == "0"
-
-
-def test_get_output_data(rust_dataflow):
-    graph = nx.DiGraph()
-    graph.add_node(1, schema=["col1"], schema_types=["DATA_TYPE_INT"])
-    graph.add_node(2, schema=["col1"], schema_types=["DATA_TYPE_INT"])
-    graph.add_edge(1, 2)
-    output_node, output_vars = rust_dataflow.get_output_data(graph)
-    assert output_node == 2
-    assert output_vars == 1
 
 
 def test_get_node_str(rust_dataflow):

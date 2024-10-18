@@ -563,8 +563,8 @@ class RustDataflow:
         )
         return code
 
-    def generate_graph_code(self, graph: nx.DiGraph) -> dict[str | int, str]:
-        flow_code = dict()
+    def generate_graph_code(self, graph: nx.DiGraph) -> list[str]:
+        flow_code = list()
 
         iterate_template = self._template_env.get_template("iterate.rs.jinja2")
         reduced, cycles = reduced_graph(graph)
@@ -578,24 +578,22 @@ class RustDataflow:
                     cycle_code[cycle_node] = self.generate_node_code(
                         iter_graph, cycle_node, anchor=f"iter_{node}", in_iterate=True
                     )
-                flow_code[node] = iterate_template.render(
-                    {
-                        "ingress_nodes": find_ingress_nodes(
-                            graph, list(cycles[node].nodes)
-                        ),
-                        "anchor": node,
-                        "cycle_flow": cycle_order,
-                        "flow_code": cycle_code,
-                        "anchor_code": anchor_code,
-                    }
+                flow_code.append(
+                    iterate_template.render(
+                        {
+                            "ingress_nodes": find_ingress_nodes(
+                                graph, list(cycles[node].nodes)
+                            ),
+                            "anchor": node,
+                            "cycle_flow": cycle_order,
+                            "flow_code": cycle_code,
+                            "anchor_code": anchor_code,
+                        }
+                    )
                 )
             else:
-                flow_code[node] = self.generate_node_code(graph, node)
+                flow_code.append(self.generate_node_code(graph, node))
         return flow_code
-
-    def get_output_data(self, graph: nx.DiGraph) -> tuple[str | int, int]:
-        output = find_output(graph)
-        return output, len(graph.nodes[output]["schema"])
 
     def create_cargo_toml(self, timestamp: str) -> None:
         dest_path = self._config.GENERATED_RUST_PROJECT_PATH / self._cargo_file_name
@@ -617,16 +615,13 @@ class RustDataflow:
         dest_path = self._config.GENERATED_RUST_PROJECT_PATH / "src" / f"{timestamp}.rs"
         template = self._template_env.get_template(self._config.RUST_FILE_TEMPLATE_NAME)
         flow_code = self.generate_graph_code(graph)
-        reduced, _ = reduced_graph(graph)
-        output_node, output_vars = self.get_output_data(reduced)
+        output_node = find_output(graph)
         output_text = template.render(
+            query_id=self._query_id,
             sources=self.get_sources_data(graph),
             flow_code=flow_code,
-            top_sort=list(nx.topological_sort(reduced)),
-            query_id=self._query_id,
-            output_node=output_node,
-            output_schema_types=graph.nodes[output_node]["schema_types"],
-            output_vars=output_vars,
+            output_node_str=self.get_node_str(output_node),
+            output_vars_count=len(graph.nodes[output_node]["schema"]),
         )
 
         with open(dest_path, "w") as f:
