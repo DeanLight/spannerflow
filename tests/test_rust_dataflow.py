@@ -48,3 +48,29 @@ def test_get_output_data(rust_dataflow):
     output_node, output_vars = rust_dataflow.get_output_data(graph)
     assert output_node == 2
     assert output_vars == 1
+
+
+def test_get_node_str(rust_dataflow):
+    str_anchor = "ANCHOR"
+    assert (
+        rust_dataflow.get_node_str(1, anchor=str_anchor, in_iterate=False) == "node_1"
+    )
+    assert (
+        rust_dataflow.get_node_str("X", anchor=str_anchor, in_iterate=False) == "node_X"
+    )
+    assert (
+        rust_dataflow.get_node_str(str_anchor, anchor=str_anchor, in_iterate=True)
+        == str_anchor
+    )
+    assert (
+        rust_dataflow.get_node_str(str_anchor, anchor=str_anchor, in_iterate=False)
+        == f"node_{str_anchor}"
+    )
+    int_anchor = 1
+    assert rust_dataflow.get_node_str(
+        int_anchor, anchor=int_anchor, in_iterate=True
+    ) == str(int_anchor)
+    assert (
+        rust_dataflow.get_node_str(int_anchor, anchor=int_anchor, in_iterate=False)
+        == f"node_{int_anchor}"
+    )

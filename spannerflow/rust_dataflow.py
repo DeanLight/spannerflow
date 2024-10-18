@@ -169,7 +169,7 @@ class RustDataflow:
             )
         )
 
-        prev_node1_str = self.get_prev_node_str(
+        prev_node1_str = self.get_node_str(
             preds[0], anchor=anchor, in_iterate=in_iterate
         )
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
@@ -177,20 +177,13 @@ class RustDataflow:
         if len(preds) == 1:
             return f"let {node_str} = {prev_node1_str};"
         elif len(preds) == 2:
-            prev_node2_str = self.get_prev_node_str(
+            prev_node2_str = self.get_node_str(
                 preds[1], anchor=anchor, in_iterate=in_iterate
             )
             return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
         raise ValueError(
             "Union node has invalid number of predecessors: ", (len(preds), node)
         )
-
-    def get_prev_node_str(
-        self, pred: str | int, anchor: str | int | None = None, in_iterate: bool = False
-    ) -> str:
-        if in_iterate and pred == anchor:
-            return str(anchor)
-        return f"node_{pred}"
 
     def get_node_str(
         self, node: str | int, anchor: str | int | None = None, in_iterate: bool = False
@@ -349,7 +342,7 @@ class RustDataflow:
     ) -> str:
         prev_nodes = list(graph.pred[node])
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
-        prev_node_str = self.get_prev_node_str(
+        prev_node_str = self.get_node_str(
             prev_nodes[0], anchor=anchor, in_iterate=in_iterate
         )
         match graph.nodes[node]["name"]:
@@ -359,7 +352,7 @@ class RustDataflow:
                         "Not node has invalid number of predecessors: ",
                         (len(prev_nodes), node),
                     )
-                prev_node_str = self.get_prev_node_str(
+                prev_node_str = self.get_node_str(
                     prev_nodes[0], anchor=anchor, in_iterate=in_iterate
                 )
                 code = f"let {node_str} = {prev_node_str}.map(|{get_node_schema(graph, prev_nodes[0])}| ({get_node_schema(graph, prev_nodes[0])}, !{get_node_schema(graph, prev_nodes[0])}));"
@@ -402,7 +395,7 @@ class RustDataflow:
         schema = get_node_schema(graph, node)
         prev_nodes = list(graph.pred[node])
 
-        prev_node_str = self.get_prev_node_str(
+        prev_node_str = self.get_node_str(
             prev_nodes[0], anchor=anchor, in_iterate=in_iterate
         )
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
@@ -435,7 +428,7 @@ class RustDataflow:
         schema = get_node_schema(graph, node)
         prev_nodes = list(graph.pred[node])
 
-        prev_node_str = self.get_prev_node_str(
+        prev_node_str = self.get_node_str(
             prev_nodes[0], anchor=anchor, in_iterate=in_iterate
         )
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
@@ -453,7 +446,7 @@ class RustDataflow:
         gr_node = graph.nodes[node]
         prev_nodes = list(graph.pred[node])
 
-        prev_node_str = self.get_prev_node_str(
+        prev_node_str = self.get_node_str(
             prev_nodes[0], anchor=anchor, in_iterate=in_iterate
         )
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
@@ -496,7 +489,7 @@ class RustDataflow:
         gr_node = graph.nodes[node]
         prev_nodes = list(graph.pred[node])
 
-        prev_node_str = self.get_prev_node_str(
+        prev_node_str = self.get_node_str(
             prev_nodes[0], anchor=anchor, in_iterate=in_iterate
         )
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
