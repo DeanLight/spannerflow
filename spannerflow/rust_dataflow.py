@@ -56,8 +56,9 @@ class RustDataflow:
         self._server_process: None | subprocess.Popen = None
 
     def __enter__(self):
-        self._build_rust_server()
-        self._run_rust_server_in_background()
+        if not self._is_server_running:
+            self._build_rust_server()
+            self._run_rust_server_in_background()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):

@@ -116,6 +116,25 @@ def test_dataflow_get_from_input_code(rust_dataflow):
     )
 
 
+def test_dataflow___enter__(rust_dataflow):
+    with patch.object(
+        rust_dataflow, "_build_rust_server"
+    ) as mock_build_rust_server, patch.object(
+        rust_dataflow, "_run_rust_server_in_background"
+    ) as mock_run_rust_server_in_background:
+        rust_dataflow._is_server_running = True
+        obj = rust_dataflow.__enter__()
+        mock_build_rust_server.assert_not_called()
+        mock_run_rust_server_in_background.assert_not_called()
+        assert obj == rust_dataflow
+
+        rust_dataflow._is_server_running = False
+        obj = rust_dataflow.__enter__()
+        mock_build_rust_server.assert_called_once()
+        mock_run_rust_server_in_background.assert_called_once()
+        assert obj == rust_dataflow
+
+
 def test_dataflow___exit__(rust_dataflow):
     with patch.object(rust_dataflow, "_stop_rust_server") as mock_stop_rust_server:
         rust_dataflow._is_server_running = False
@@ -125,3 +144,58 @@ def test_dataflow___exit__(rust_dataflow):
         rust_dataflow._is_server_running = True
         rust_dataflow.__exit__(None, None, None)
         mock_stop_rust_server.assert_called_once()
+
+
+def test_validate_node(rust_dataflow):
+    graph = nx.DiGraph()
+    graph.add_node(
+        0,
+        op="get_const",
+        schema=["col1"],
+        const_dict={"col1": 1.0},
+    )
+    assert rust_dataflow.validate_node(graph, 0) is None
+    graph.add_node(
+        "X",
+        op="get_rel",
+        schema=["col2"],
+    )
+    assert rust_dataflow.validate_node(graph, "X") is None
+    graph.add_node(
+        2,
+        op="rename",
+        schema=["X"],
+    )
+    graph.add_edge(0, 2)
+    assert rust_dataflow.validate_node(graph, 2) is None
+    graph.add_edge("X", 2)
+    with pytest.raises(ValueError):
+        rust_dataflow.validate_node(graph, 2)
+
+    graph.remove_node(2)
+    graph.add_node(
+        3,
+        op="product",
+        schema=["col1", "col2"],
+    )
+    graph.add_edge(0, 3)
+    with pytest.raises(ValueError):
+        rust_dataflow.validate_node(graph, 3)
+    graph.add_edge("X", 3)
+    assert rust_dataflow.validate_node(graph, 3) is None
+
+    graph.remove_node(3)
+
+    graph.add_node(4, op="ie_map", schema=["col1"], name="not")
+    graph.add_edge("X", 4)
+    assert rust_dataflow.validate_node(graph, 4) is None
+    graph.add_edge(0, 4)
+    with pytest.raises(ValueError):
+        rust_dataflow.validate_node(graph, 4)
+    graph.add_node(
+        5,
+        op="aaaa",
+        schema=["col1"],
+    )
+    with pytest.raises(ValueError):
+        rust_dataflow.validate_node(graph, 5)
