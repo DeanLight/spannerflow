@@ -1,0 +1,9 @@
+version: v2
+modules:
+  - path: spannerflow/proto
+
+lint:
+  use:
+    - STANDARD
+  rpc_allow_google_protobuf_empty_requests: true
+  rpc_allow_google_protobuf_empty_responses: true
