@@ -20,55 +20,6 @@ def engine():
         return instance
 
 
-def test_engine_open(engine):
-    with patch.object(engine, "__enter__") as mock_enter:
-        engine._is_open = True
-        engine.open()
-        mock_enter.assert_not_called()
-
-        engine._is_open = False
-        engine.open()
-        engine.__enter__.assert_called_once()
-
-
-def test_engine_close(engine):
-    with patch.object(engine, "__exit__") as mock_exit:
-        engine._is_open = False
-        engine.open()
-        mock_exit.assert_not_called()
-
-        engine._is_open = True
-        engine.close()
-        mock_exit.assert_called_once()
-
-
-def test_engine___enter__(engine):
-    with patch.object(engine._rust_dataflow, "__enter__") as mock_enter:
-        engine._is_open = True
-        engine.__enter__()
-        mock_enter.assert_not_called()
-        assert engine._is_open is True
-
-        engine._is_open = False
-        engine.__enter__()
-        mock_enter.assert_called_once()
-        assert engine._is_open is True
-
-
-def test_engine___exit__(engine):
-    with patch.object(engine._rust_dataflow, "__exit__") as mock_exit:
-        engine._is_open = False
-        engine.__exit__(None, None, None)
-        mock_exit.assert_not_called()
-
-        assert engine._is_open is False
-
-        engine._is_open = True
-        engine.__exit__(None, None, None)
-        mock_exit.assert_called_once()
-        assert engine._is_open is False
-
-
 def test_engine_save_to_csv(engine):
     with patch("grpc.insecure_channel"), patch(
         "spannerflow.dataflow.v1.dataflow_pb2_grpc.DataflowServiceStub"

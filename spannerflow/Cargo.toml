@@ -8,10 +8,16 @@ libloading = "0.8.5"
 tonic = "0.12.3"
 prost = "0.13.3"
 prost-types = "0.13.3"
-tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.41.0", features = ["macros", "rt-multi-thread"] }
 tokio-stream = "0.1"
 lazy_static = "1.5.0"
 csv = "1.3.0"
+pyo3 = { version = "0.22.5", features = ["extension-module"] }
+
+[lib]
+crate-type = ["cdylib"]
+name = "rust_server"
+path = "src/main.rs"
 
 [build-dependencies]
 tonic-build = "0.12.3"
