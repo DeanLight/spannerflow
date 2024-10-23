@@ -1,3 +1,4 @@
+__version__ = "0.0.1"
 import glob
 import os
 from pathlib import Path

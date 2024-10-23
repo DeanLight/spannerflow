@@ -188,3 +188,5 @@ rust/
 .vscode/
 pytest.xml
 pytest-coverage.txt
+_proc/
+_docs/
