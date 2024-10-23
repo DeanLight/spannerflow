@@ -4,7 +4,7 @@ from typing import Any
 
 import setuptools
 from pkg_resources import parse_version
-from setuptools_rust import RustExtension
+from setuptools_rust import Binding, RustExtension
 
 assert parse_version(setuptools.__version__) >= parse_version("36.2")
 
@@ -92,7 +92,8 @@ setuptools.setup(
         RustExtension(
             "spannerflow.rust_server",
             "spannerflow/Cargo.toml",
-            features=["pyo3/extension-module"],
+            features=[],
+            binding=Binding.Exec,
         )
     ],
     entry_points={
