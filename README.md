@@ -16,3 +16,5 @@ cd ../..
 pre-commit run --all-files
 poetry build
 ```
+# TODO: create graph's schema
+# TODO: write tutorial notebook
