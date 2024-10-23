@@ -116,6 +116,36 @@ def test_dataflow_get_from_input_code(rust_dataflow):
     )
 
 
+def test_dataflow___enter__(rust_dataflow):
+    with patch.object(
+        rust_dataflow, "_build_rust_server"
+    ) as mock_build_rust_server, patch.object(
+        rust_dataflow, "_run_rust_server_in_background"
+    ) as mock_run_rust_server_in_background:
+        rust_dataflow._is_server_running = True
+        obj = rust_dataflow.__enter__()
+        mock_build_rust_server.assert_not_called()
+        mock_run_rust_server_in_background.assert_not_called()
+        assert obj == rust_dataflow
+
+        rust_dataflow._is_server_running = False
+        obj = rust_dataflow.__enter__()
+        mock_build_rust_server.assert_called_once()
+        mock_run_rust_server_in_background.assert_called_once()
+        assert obj == rust_dataflow
+
+
+def test_dataflow___exit__(rust_dataflow):
+    with patch.object(rust_dataflow, "_stop_rust_server") as mock_stop_rust_server:
+        rust_dataflow._is_server_running = False
+        rust_dataflow.__exit__(None, None, None)
+        mock_stop_rust_server.assert_not_called()
+
+        rust_dataflow._is_server_running = True
+        rust_dataflow.__exit__(None, None, None)
+        mock_stop_rust_server.assert_called_once()
+
+
 def test_validate_node(rust_dataflow):
     graph = nx.DiGraph()
     graph.add_node(

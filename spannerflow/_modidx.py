@@ -19,6 +19,14 @@ d = {
                 "engine.html#engine",
                 "spannerflow/engine.py",
             ),
+            "spannerflow.engine.Engine.__enter__": (
+                "engine.html#engine.__enter__",
+                "spannerflow/engine.py",
+            ),
+            "spannerflow.engine.Engine.__exit__": (
+                "engine.html#engine.__exit__",
+                "spannerflow/engine.py",
+            ),
             "spannerflow.engine.Engine.__init__": (
                 "engine.html#engine.__init__",
                 "spannerflow/engine.py",
@@ -45,6 +53,10 @@ d = {
             ),
             "spannerflow.engine.Engine.add_rows": (
                 "engine.html#engine.add_rows",
+                "spannerflow/engine.py",
+            ),
+            "spannerflow.engine.Engine.close": (
+                "engine.html#engine.close",
                 "spannerflow/engine.py",
             ),
             "spannerflow.engine.Engine.delete_collection": (
@@ -179,8 +191,28 @@ d = {
                 "rust_dataflow.html#rustdataflow",
                 "spannerflow/rust_dataflow.py",
             ),
+            "spannerflow.rust_dataflow.RustDataflow.__enter__": (
+                "rust_dataflow.html#rustdataflow.__enter__",
+                "spannerflow/rust_dataflow.py",
+            ),
+            "spannerflow.rust_dataflow.RustDataflow.__exit__": (
+                "rust_dataflow.html#rustdataflow.__exit__",
+                "spannerflow/rust_dataflow.py",
+            ),
             "spannerflow.rust_dataflow.RustDataflow.__init__": (
                 "rust_dataflow.html#rustdataflow.__init__",
+                "spannerflow/rust_dataflow.py",
+            ),
+            "spannerflow.rust_dataflow.RustDataflow._build_rust_server": (
+                "rust_dataflow.html#rustdataflow._build_rust_server",
+                "spannerflow/rust_dataflow.py",
+            ),
+            "spannerflow.rust_dataflow.RustDataflow._run_rust_server_in_background": (
+                "rust_dataflow.html#rustdataflow._run_rust_server_in_background",
+                "spannerflow/rust_dataflow.py",
+            ),
+            "spannerflow.rust_dataflow.RustDataflow._stop_rust_server": (
+                "rust_dataflow.html#rustdataflow._stop_rust_server",
                 "spannerflow/rust_dataflow.py",
             ),
             "spannerflow.rust_dataflow.RustDataflow.build_so": (

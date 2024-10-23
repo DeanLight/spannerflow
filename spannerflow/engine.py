@@ -18,7 +18,6 @@ from google.protobuf import empty_pb2
 from google.protobuf.json_format import MessageToDict
 from singleton_decorator import singleton
 
-from . import rust_server  # type: ignore
 from .config import Config
 from .dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
 from .graph_utils import find_output
@@ -41,15 +40,31 @@ class Engine:
         self._rust_dataflow = RustDataflow(config=config, engine=self)
         self._is_open = False
 
-    def open(self) -> None:
+    def __enter__(self):
         def inner():
             asyncio.run(run_server(self._ie_functions))
 
+        if not self._is_open:
+            threading.Thread(target=inner, daemon=True).start()
+            self._rust_dataflow.__enter__()
+            self._is_open = True
+        return self
+
+    def open(self):
         if self._is_open:
             return
-        threading.Thread(target=rust_server.start_server, daemon=True).start()
-        threading.Thread(target=inner, daemon=True).start()
-        self._is_open = True
+
+        self.__enter__()
+
+    def close(self):
+        if not self._is_open:
+            return
+        self.__exit__(None, None, None)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self._is_open:
+            self._rust_dataflow.__exit__(exc_type, exc_value, traceback)
+            self._is_open = False
 
     def save_to_csv(self, collection_name: str, file_path: Path) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
