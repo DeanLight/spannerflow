@@ -5,7 +5,7 @@
 # %% auto 0
 __all__ = ["config", "IEFunctionService", "run_server"]
 
-# %% ../nbs/40_grpc_server.ipynb 3
+# %% ../nbs/40_grpc_server.ipynb 2
 from typing import Any, AsyncGenerator, Callable
 
 import grpc

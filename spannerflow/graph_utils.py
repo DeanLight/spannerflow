@@ -19,7 +19,7 @@ __all__ = [
     "create_iter_graph",
 ]
 
-# %% ../nbs/30_graph_utils.ipynb 3
+# %% ../nbs/30_graph_utils.ipynb 2
 import networkx as nx
 
 

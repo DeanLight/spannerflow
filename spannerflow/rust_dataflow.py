@@ -5,7 +5,7 @@
 # %% auto 0
 __all__ = ["RustDataflow"]
 
-# %% ../nbs/50_rust_dataflow.ipynb 3
+# %% ../nbs/50_rust_dataflow.ipynb 2
 import os
 from datetime import datetime
 from pathlib import Path

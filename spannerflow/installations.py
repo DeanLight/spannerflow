@@ -11,7 +11,7 @@ __all__ = [
     "install_rust",
 ]
 
-# %% ../nbs/20_installations.ipynb 3
+# %% ../nbs/20_installations.ipynb 2
 import glob
 import os
 import platform

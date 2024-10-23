@@ -6,7 +6,17 @@
 This file will become your README and also the index of your
 documentation.
 
+<!-- Pytest Coverage Comment:Begin -->
+<!-- Pytest Coverage Comment:End -->
+
 ## Developer Guide
+
+``` bash
+python -m venv venv
+source venv/bin/activate
+
+pip install -U pip nbdev 
+```
 
 If you are new to using `nbdev` here are some useful pointers to get you
 started.
@@ -15,7 +25,7 @@ started.
 
 ``` sh
 # make sure spannerflow package is installed in development mode
-$ pip install -e .
+$ pip install -e .[dev]
 
 # make changes under nbs/ directory
 # ...
@@ -61,7 +71,7 @@ find package manager specific guidelines on
 Fill me in please! Don’t forget code examples:
 
 ``` python
-1+1
+1 + 1
 ```
 
     2

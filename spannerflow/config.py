@@ -5,9 +5,12 @@
 # %% auto 0
 __all__ = ["Config"]
 
-# %% ../nbs/00_config.ipynb 3
+# %% ../nbs/00_config.ipynb 2
 from dataclasses import dataclass, field
 from pathlib import Path
+
+if "__file__" not in globals():
+    __file__ = str(Path.cwd())
 
 
 @dataclass
