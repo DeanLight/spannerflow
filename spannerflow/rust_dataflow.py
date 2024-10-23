@@ -66,7 +66,6 @@ class RustDataflow:
 
     def __enter__(self):
         if not self._is_server_running:
-            self._build_rust_server()
             self._run_rust_server_in_background()
         return self
 
@@ -633,19 +632,10 @@ class RustDataflow:
             f"query_{self._query_id}",
         )
 
-    # TODO: compile on installation via rust_setuptools instead of runtime
-    def _build_rust_server(self) -> None:
-        cargo_toml_path = Path(__file__).parent.joinpath("Cargo.toml")
-        build_rust(cargo_toml_path.absolute(), self._config.RUST_SERVER_BUILD_LOG_PATH)
-
     def _run_rust_server_in_background(self) -> None:
         def inner() -> None:
             # TODO: handle port is already in use
-            server_path = (
-                Path(__file__)
-                .parent.joinpath("target", "release", "spannerflow_rust")
-                .absolute()
-            )
+            server_path = self._config.RUST_SERVER_PATH
             self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
             with open(self._config.RUST_SERVER_LOG_PATH, "a") as log_file:
                 self._server_process = subprocess.Popen(

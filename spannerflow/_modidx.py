@@ -203,10 +203,6 @@ d = {
                 "rust_dataflow.html#rustdataflow.__init__",
                 "spannerflow/rust_dataflow.py",
             ),
-            "spannerflow.rust_dataflow.RustDataflow._build_rust_server": (
-                "rust_dataflow.html#rustdataflow._build_rust_server",
-                "spannerflow/rust_dataflow.py",
-            ),
             "spannerflow.rust_dataflow.RustDataflow._run_rust_server_in_background": (
                 "rust_dataflow.html#rustdataflow._run_rust_server_in_background",
                 "spannerflow/rust_dataflow.py",

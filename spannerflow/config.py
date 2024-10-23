@@ -22,6 +22,7 @@ class Config:
     DATAFLOW_IP: str = "localhost"
     DATAFLOW_ADDRESS: str = f"{DATAFLOW_IP}:{DATAFLOW_PORT}"
     GENERATED_RUST_PROJECT_PATH: Path = Path(__file__).parent.joinpath("generated_rust")
+    RUST_SERVER_PATH: Path = Path(__file__).parent.joinpath("rust_server")
     TEMPLATES_PATH: Path = Path(__file__).parent.joinpath("templates")
     CARGO_TOML_TEMPLATE_NAME: str = "Cargo.toml.jinja2"
     RUST_FILE_TEMPLATE_NAME: str = "rust_dataflow.rs.jinja2"
