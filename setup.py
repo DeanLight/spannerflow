@@ -92,6 +92,7 @@ setuptools.setup(
         RustExtension(
             "spannerflow.rust_server",
             "spannerflow/Cargo.toml",
+            features=[],
         )
     ],
     entry_points={
