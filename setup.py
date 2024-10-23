@@ -92,7 +92,7 @@ setuptools.setup(
         RustExtension(
             "spannerflow.rust_server",
             "spannerflow/Cargo.toml",
-            features=[],
+            features=["pyo3/extension-module"],
         )
     ],
     entry_points={
