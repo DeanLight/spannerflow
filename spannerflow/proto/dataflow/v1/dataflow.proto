@@ -24,6 +24,7 @@ message RunIEFunctionResponse {
 
 service DataflowService {
     rpc AddRow (AddRowRequest) returns (google.protobuf.Empty);
+    rpc AddRows (stream AddRowsRequest) returns (google.protobuf.Empty);
     rpc DeleteRow (DeleteRowRequest) returns (google.protobuf.Empty);
     rpc AddCollection (AddCollectionRequest) returns (google.protobuf.Empty);
     rpc DeleteCollection (DeleteCollectionRequest) returns (google.protobuf.Empty);
@@ -32,6 +33,13 @@ service DataflowService {
     rpc RunDataflow (RunDataflowRequest) returns (stream RunDataflowResponse);
     rpc LoadFromCSV (LoadFromCSVRequest) returns (google.protobuf.Empty);
     rpc SaveToCSV (SaveToCSVRequest) returns (google.protobuf.Empty);
+}
+
+message AddRowsRequest {
+    oneof message_type {
+        string collection_name = 1;
+        RowRequest row = 2;
+    }    
 }
 
 message LoadFromCSVRequest {

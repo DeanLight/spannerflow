@@ -624,6 +624,7 @@ class RustDataflow:
             f"query_{self._query_id}",
         )
 
+    # TODO: compile on installation via rust_setuptools instead of runtime
     def _build_rust_server(self) -> None:
         cargo_toml_path = Path(__file__).parent.joinpath("Cargo.toml")
         build_rust(cargo_toml_path.absolute(), self._config.RUST_SERVER_BUILD_LOG_PATH)

@@ -69,6 +69,26 @@ class Engine:
             )
             stub.AddRow(request)
 
+    def _generate_add_rows_requests(
+        self, collection_name: str, schema: list[str], rows: list[list[Any]]
+    ) -> Generator[dataflow_pb2.AddRowsRequest, None, None]:  # type: ignore
+        yield dataflow_pb2.AddRowsRequest(  # type: ignore
+            collection_name=collection_name
+        )
+        for row in rows:
+            yield dataflow_pb2.AddRowsRequest(  # type: ignore
+                row=dataflow_pb2.RowRequest(row=self._serialize_row(schema, row))  # type: ignore
+            )
+
+    def add_rows(self, collection_name: str, rows: list[list[Any]]) -> None:
+        schema = self.get_collections()[collection_name]
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
+            stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
+            request_generator = self._generate_add_rows_requests(
+                collection_name, schema, rows
+            )
+            stub.AddRows(request_generator)
+
     def delete_row(self, collection_name: str, row: list[Any]) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)

@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 use std::env;
-use std::sync::Mutex;
 use csv;
 
 
 use libloading::{Library, Symbol};
 
 use tonic::{transport::Server, Request, Response, Status};
+use tokio::sync::Mutex;
 use tokio_stream::iter;
+use tokio_stream::StreamExt;
 
 use dataflow::dataflow_service_server::{DataflowService, DataflowServiceServer};
 use dataflow::{*};
@@ -65,26 +66,79 @@ impl DataflowService for MyDataflowService {
     
     type GetCollectionStream = tokio_stream::Iter<std::vec::IntoIter<Result<GetCollectionResponse, tonic::Status>>>;
     type RunDataflowStream = tokio_stream::Iter<std::vec::IntoIter<Result<RunDataflowResponse, tonic::Status>>>;
+    
+    async fn add_rows(
+        &self,
+        request: Request<tonic::Streaming<AddRowsRequest>>,
+    ) -> Result<Response<()>, Status> {
+        println!("Got a streaming request: {:?}", request);
+        
+        let mut stream = request.into_inner();  // Extract the stream
+        let mut collection_name: Option<String> = None;
+        let mut collections = COLLECTIONS.lock().await;
+        
+        let schemas = SCHEMAS.lock().await;
+    
+        // Process the stream
+        while let Some(req) = stream.next().await {
+            match req {
+                Ok(message) => {
+                    println!("Received message: {:?}", message); // Debug log
+                    if let Some(collection) = message.message_type {
+                        match collection {
+                            // Handle the collection name variant
+                            dataflow::add_rows_request::MessageType::CollectionName(name) => {
+                                println!("Received collection name: {}", name); // Debug log
+                                collection_name = Some(name);
+                            }
+                            // Handle the row variant
+                            dataflow::add_rows_request::MessageType::Row(row) => {
+                                println!("Received row: {:?}", row); // Debug log
+                                if let Some(ref name) = collection_name {
+                                    if let Some(coll) = collections.get_mut(name) {
+                                        if validate_schema(schemas.get(name).unwrap(), &row.row) {
+                                            coll.push(row.row.clone());
+                                        } else {
+                                            eprintln!("Invalid row schema for collection: {}", name);
+                                            return Err(Status::invalid_argument("Invalid row schema"));
+                                        }
+                                    } else {
+                                        eprintln!("Collection not found: {}", name);
+                                        return Err(Status::not_found("Collection not found"));
+                                    }
+                                } else {
+                                    eprintln!("Collection name not found");
+                                    return Err(Status::invalid_argument("Collection name not found"));
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error receiving stream: {:?}", e);
+                    return Err(Status::internal("Failed to receive stream"));
+                }
+            }
+        }
+        Ok(Response::new(()))
+    }
+    
+
+
     async fn save_to_csv(
         &self,
         request: Request<SaveToCsvRequest>,
     ) -> Result<Response<()>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
-        let collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
+        let collections = COLLECTIONS.lock().await;
         if let Some(vec) = collections.get(&req.collection_name) {
             let mut wtr = csv::Writer::from_path(req.file_path).map_err(|e| {
                 eprintln!("Failed to create CSV writer: {:?}", e);
                 Status::internal("Failed to create CSV writer")
             })?;
 
-            if let Some(schema) = SCHEMAS.lock().unwrap().get(&req.collection_name) {
+            if let Some(schema) = SCHEMAS.lock().await.get(&req.collection_name) {
                 let mut csv_row = Vec::new();
                 for data_type in schema {
                     csv_row.push(data_type.as_str_name());
@@ -118,20 +172,8 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<()>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
-        let mut collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
-        let mut schemas = match SCHEMAS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                return Err(Status::internal("Internal server error due to mutex poisoning"));
-            }
-        };
+        let mut collections = COLLECTIONS.lock().await;
+        let mut schemas = SCHEMAS.lock().await;
         if collections.contains_key(&req.collection_name) || schemas.contains_key(&req.collection_name) {
             return Err(Status::already_exists("Collection already exists"));
         }
@@ -182,13 +224,7 @@ impl DataflowService for MyDataflowService {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
 
-        let collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
+        let collections = COLLECTIONS.lock().await;
         if let Some(vec) = collections.get(&req.collection_name) {
             let responses: Vec<Result<GetCollectionResponse, Status>> = vec.iter().cloned().map(|row| {
                 Ok(GetCollectionResponse { row: row })
@@ -209,21 +245,12 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<GetCollectionsResponse>, Status> {
         println!("Got a request: {:?}", request);
     
-        let collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                return Err(Status::internal("Internal server error due to mutex poisoning"));
-            }
-        };
-    
+        let collections = COLLECTIONS.lock().await;
         let mut response_collections: Vec<dataflow::Collection> = Vec::new();
-    
+        let schemas = SCHEMAS.lock().await;
         for (name, _schema) in collections.iter() {
-            let schema_types: Vec<i32> = SCHEMAS.lock()
-            .map(|s| s.get(name)
-                .map(|data_types| data_types.iter().map(|data_type| *data_type as i32).collect())
-                .unwrap_or_default())
+            let schema_types: Vec<i32> = schemas.get(name)
+            .map(|data_types| data_types.iter().map(|data_type| *data_type as i32).collect())
             .unwrap_or_default();
             
             let collection = dataflow::Collection {
@@ -247,21 +274,9 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<()>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
-        let mut collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
+        let mut collections = COLLECTIONS.lock().await;
         
-        let schema = match SCHEMAS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
+        let schema = SCHEMAS.lock().await;
 
         if !collections.contains_key(&req.collection_name) || !schema.contains_key(&req.collection_name) {
             return Err(Status::not_found("Collection not found"));
@@ -286,13 +301,7 @@ impl DataflowService for MyDataflowService {
         println!("Got a request: {:?}", request);
         let req = request.into_inner(); 
 
-        let mut collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
+        let mut collections = COLLECTIONS.lock().await;
 
         if !collections.contains_key(&req.collection_name) {
             return Err(Status::not_found("Collection not found"));
@@ -320,20 +329,8 @@ impl DataflowService for MyDataflowService {
         let reply: () = ();
         let req = request.into_inner();
         
-        let mut collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
-        let mut schemas = match SCHEMAS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
+        let mut collections = COLLECTIONS.lock().await;
+        let mut schemas = SCHEMAS.lock().await;
         if collections.contains_key(&req.collection_name) || schemas.contains_key(&req.collection_name) {
             return Err(Status::already_exists("Collection already exists"));
         }
@@ -351,20 +348,8 @@ impl DataflowService for MyDataflowService {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
         
-        let mut collections = match COLLECTIONS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
-        let mut schemas = match SCHEMAS.lock() {
-            Ok(lock) => lock,
-            Err(poisoned) => {
-                eprintln!("Mutex was poisoned: {:?}", poisoned);
-                poisoned.into_inner()
-            }
-        };
+        let mut collections = COLLECTIONS.lock().await;
+        let mut schemas = SCHEMAS.lock().await;
         if !collections.contains_key(&req.collection_name) || !schemas.contains_key(&req.collection_name) {
             return Err(Status::not_found("Collection not found"));
         }
@@ -383,7 +368,7 @@ impl DataflowService for MyDataflowService {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
         
-        if let Ok(vec) = run_dataflow_so(req.so_path, req.fn_name) {
+        if let Ok(vec) = run_dataflow_so(req.so_path, req.fn_name).await {
             let responses: Vec<Result<RunDataflowResponse, Status>> = vec.iter().cloned().map(|row| {
                 Ok(RunDataflowResponse { row: row })
             }).collect();
@@ -414,7 +399,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<String>>, Status> {
+async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<String>>, Status> {
     unsafe {
         let lib = Library::new(&so_path).map_err(|e| {
             eprintln!("Failed to load library from path {}: {:?}", so_path, e);
@@ -430,14 +415,7 @@ fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<String>>,
         };
 
         // Acquire the lock on collections
-        let collections_guard = match COLLECTIONS.lock() {
-            Ok(guard) => guard,
-            Err(_) => {
-                eprintln!("Failed to lock collections");
-                std::mem::drop(lib);
-                return Err(Status::internal("Failed to lock collections"));
-            }
-        };
+        let collections_guard = COLLECTIONS.lock().await;
 
         let output: Vec<Vec<String>> = function(&*collections_guard);
         // Drop the library immediately after using it

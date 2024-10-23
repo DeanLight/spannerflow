@@ -112,6 +112,11 @@ class DataflowServiceStub(object):
                 request_serializer=dataflow_dot_v1_dot_dataflow__pb2.AddRowRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.AddRows = channel.stream_unary(
+                '/dataflow.v1.DataflowService/AddRows',
+                request_serializer=dataflow_dot_v1_dot_dataflow__pb2.AddRowsRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
         self.DeleteRow = channel.unary_unary(
                 '/dataflow.v1.DataflowService/DeleteRow',
                 request_serializer=dataflow_dot_v1_dot_dataflow__pb2.DeleteRowRequest.SerializeToString,
@@ -158,6 +163,12 @@ class DataflowServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def AddRow(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AddRows(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -217,6 +228,11 @@ def add_DataflowServiceServicer_to_server(servicer, server):
             'AddRow': grpc.unary_unary_rpc_method_handler(
                     servicer.AddRow,
                     request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.AddRowRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'AddRows': grpc.stream_unary_rpc_method_handler(
+                    servicer.AddRows,
+                    request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.AddRowsRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'DeleteRow': grpc.unary_unary_rpc_method_handler(
@@ -286,6 +302,33 @@ class DataflowService(object):
             target,
             '/dataflow.v1.DataflowService/AddRow',
             dataflow_dot_v1_dot_dataflow__pb2.AddRowRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AddRows(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_unary(
+            request_iterator,
+            target,
+            '/dataflow.v1.DataflowService/AddRows',
+            dataflow_dot_v1_dot_dataflow__pb2.AddRowsRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
