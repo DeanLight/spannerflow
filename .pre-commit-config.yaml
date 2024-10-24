@@ -1,39 +1,57 @@
 repos:
+  - repo: https://github.com/fastai/nbdev
+    rev: 2.3.31
+    hooks:
+    - id: nbdev_clean
+    - id: nbdev_export
+
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.8.7
+    hooks:
+      #- id: nbqa-mypy
+      #  exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$|setup.py'
+      - id: nbqa-black
+        exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$|setup.py'
+      - id: nbqa-isort
+        exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$|setup.py'
+      #- id: nbqa-ruff
+      #  exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$|setup.py'
+
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v1.11.2'
+    rev: 'v1.13.0'
     hooks:
       - id: mypy
         language: system
-        entry: poetry run mypy
+        entry: mypy
         args: [
             "--config-file=pyproject.toml"
         ]
 
 
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: 'v5.10.1'
-    hooks:
-      - id: isort
-        exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$'
+  # - repo: https://github.com/pre-commit/mirrors-isort
+  #   rev: 'v5.10.1'
+  #   hooks:
+  #     - id: isort
+  #       exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$'
 
 
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: '24.8.0'
-    hooks:
-      - id: black
-        exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$'
-        language_version: python3
+  # - repo: https://github.com/psf/black-pre-commit-mirror
+  #   rev: '24.10.0'
+  #   hooks:
+  #     - id: black
+  #       exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$'
+  #       language_version: python3
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.6.9'
+    rev: 'v0.7.0'
     hooks:
     - id: ruff
       exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$'
-    - id: ruff-format
-      exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$'
+    # - id: ruff-format
+    #  exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$'
 
   - repo: https://github.com/bufbuild/buf
-    rev: v1.44.0
+    rev: v1.45.0
     hooks:
       - id: buf-lint
         args: [spannerflow/proto/dataflow/v1/dataflow.proto]
