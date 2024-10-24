@@ -183,8 +183,21 @@ Cargo.lock
 generated_rust
 .DS_Store
 spannerflow/logs
+spannerflow/rust_server
 protoc/
 rust/
 .vscode/
 pytest.xml
 pytest-coverage.txt
+_proc/
+_docs/
+.quarto
+
+.gitattributes
+.gitconfig
+
+# Quarto installer
+.deb
+.pkg
+
+.last_checked
