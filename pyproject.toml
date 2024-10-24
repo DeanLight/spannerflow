@@ -10,7 +10,8 @@ exclude = [
     "spannerflow/dataflow/v1/dataflow_pb2.pyi",
     "spannerflow/dataflow/v1/dataflow_pb2.py",
     "spannerflow/dataflow/v1/dataflow_pb2_grpc.py",
-    "spannerflow/setup.py"
+    "spannerflow/setup.py",
+    "spannerflow/_modidx.py"
 ]
 
 [tool.isort]
@@ -25,5 +26,9 @@ omit = [
     "spannerflow/dataflow/v1/dataflow_pb2.py",
     "spannerflow/dataflow/v1/dataflow_pb2_grpc.py",
     "spannerflow/dataflow/v1/dataflow_pb2.pyi",
-    "spannerflow/setup.py"
+    "spannerflow/setup.py",
+    "spannerflow/_modidx.py"
 ]
+
+[tool.coverage.report]
+omit = ["tests/*"]
