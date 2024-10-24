@@ -27,6 +27,9 @@ started.
 # make sure spannerflow package is installed in development mode
 $ pip install -e .[dev]
 
+# install pre-commit
+$ pre-commit install
+
 # make changes under nbs/ directory
 # ...
 
