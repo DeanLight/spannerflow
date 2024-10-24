@@ -190,3 +190,10 @@ pytest.xml
 pytest-coverage.txt
 _proc/
 _docs/
+.quarto
+
+# Quarto installer
+.deb
+.pkg
+
+.last_checked

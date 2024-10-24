@@ -135,4 +135,4 @@ d = { 'settings': { 'branch': 'main',
                                                                                                                         'spannerflow/rust_dataflow.py'),
                                            'spannerflow.rust_dataflow.RustDataflow.validate_node': ( 'rust_dataflow.html#rustdataflow.validate_node',
                                                                                                      'spannerflow/rust_dataflow.py')},
-            'spannerflow.rust_utils': {}}}
+            'spannerflow.rust_utils': {'spannerflow.rust_utils.build_rust': ('rust_utils.html#build_rust', 'spannerflow/rust_utils.py')}}}
