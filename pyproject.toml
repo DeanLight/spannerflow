@@ -21,7 +21,6 @@ profile = "black"
 addopts = "--junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=spannerflow"
 
 [tool.coverage.run]
-source = ["spannerflow"]
 omit = [
     "spannerflow/dataflow/v1/dataflow_pb2.py",
     "spannerflow/dataflow/v1/dataflow_pb2_grpc.py",
