@@ -525,12 +525,15 @@ class RustDataflow:
         iterate_template = self._template_env.get_template("iterate.rs.jinja2")
         reduced, cycles = reduced_graph(graph)
         for node in list(nx.topological_sort(reduced)):
+            self.prepare_node(reduced, node)
             if node in cycles.keys():
+                self.prepare_node(cycles[node], node)
                 iter_graph = create_iter_graph(graph, cycles[node], node)
                 anchor_code = self.generate_node_code(reduced, node)
                 cycle_code = {}
                 cycle_order = traverse_cycle(cycles[node], f"iter_{node}")
                 for cycle_node in cycle_order:
+                    self.prepare_node(iter_graph, cycle_node)
                     cycle_code[cycle_node] = self.generate_node_code(
                         iter_graph, cycle_node, anchor=f"iter_{node}", in_iterate=True
                     )
