@@ -230,6 +230,8 @@ class RustDataflow:
     def prepare_node(self, graph: nx.DiGraph, node: str | int) -> None:
         gr_node = graph.nodes[node]
         preds = [graph.nodes[key] for key in graph.pred[node].keys()]
+        if "schema_types" in gr_node:
+            return
         match gr_node["op"]:
             case "get_rel":
                 gr_node["schema_types"] = self.get_input_schema_types(node)
@@ -527,8 +529,14 @@ class RustDataflow:
         for node in list(nx.topological_sort(reduced)):
             self.prepare_node(reduced, node)
             if node in cycles.keys():
-                self.prepare_node(cycles[node], node)
+                cycles[node].nodes[f"iter_{node}"]["schema_types"] = reduced.nodes[
+                    node
+                ]["schema_types"]
+                self.prepare_node(cycles[node], f"iter_{node}")
                 iter_graph = create_iter_graph(graph, cycles[node], node)
+                iter_graph.nodes[f"iter_{node}"]["schema_types"] = reduced.nodes[node][
+                    "schema_types"
+                ]
                 anchor_code = self.generate_node_code(reduced, node)
                 cycle_code = {}
                 cycle_order = traverse_cycle(cycles[node], f"iter_{node}")
@@ -551,7 +559,7 @@ class RustDataflow:
                     )
                 )
             else:
-                flow_code.append(self.generate_node_code(graph, node))
+                flow_code.append(self.generate_node_code(reduced, node))
         return flow_code
 
     def create_cargo_toml(self, timestamp: str) -> None:
