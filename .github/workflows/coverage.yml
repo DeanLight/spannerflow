@@ -1,9 +1,7 @@
 name: pytest-coverage-comment
-on:
-  pull_request:
-    branches:
-      - '*'
 
+on: [pull_request]
+    
 permissions:
   contents: write
   checks: write
@@ -22,15 +20,21 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.12
-
+      
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip poetry
-          poetry install
+          python -m pip install --upgrade pip setuptools setuptools-rust
+          pip install '.[dev]'
 
       - name: Build coverage file
         run: |
-          poetry run pytest tests/ | tee pytest-coverage.txt
+          pytest tests/ | tee pytest-coverage.txt
 
       - name: Pytest coverage comment
         id: coverageComment
@@ -40,10 +44,14 @@ jobs:
           pytest-coverage-path: ./pytest-coverage.txt
           junitxml-path: ./pytest.xml
 
+      - name: Build Docs
+        run: |
+            nbdev_docs
+
       - name: Update Readme with Coverage Html
         run: |
-          sed -i '/<!-- Pytest Coverage Comment:Begin -->/,/<!-- Pytest Coverage Comment:End -->/c\<!-- Pytest Coverage Comment:Begin -->\n\${{ steps.coverageComment.outputs.coverageHtml }}\n<!-- Pytest Coverage Comment:End -->' ./README.md
-      
+          sed -i '/<!-- Pytest Coverage Comment:Begin -->/,/<!-- Pytest Coverage Comment:End -->/c\<!-- Pytest Coverage Comment:Begin -->\n\${{ steps.coverageComment.outputs.coverageHtml }}\n<!-- Pytest Coverage Comment:End -->' README.md
+
       - name: Pull latest changes
         run: |
           git config pull.rebase false
@@ -57,3 +65,13 @@ jobs:
           message: Update coverage on Readme
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.head_ref }}
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ github.token }}
+          force_orphan: true
+          publish_dir: ./_docs
+          # The following lines assign commit authorship to the official GH-Actions bot for deploys to `gh-pages` branch.
+          # You can swap them out with your own user credentials.
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
