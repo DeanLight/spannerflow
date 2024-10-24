@@ -4,6 +4,27 @@ repos:
     hooks:
     - id: nbdev_clean
     - id: nbdev_export
+  
+  - repo: local
+    hooks:
+    - id: nbdev_readme
+      name: nbdev_readme
+      entry: nbdev_readme
+      language: system
+      pass_filenames: false
+
+    - id: nbdev_docs
+      name: nbdev_docs
+      entry: nbdev_docs
+      language: system
+      pass_filenames: false
+      
+    - id: nbdev_test
+      name: nbdev_test
+      language: system
+      entry: nbdev_test
+      pass_filenames: false
+      
 
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.8.7
@@ -43,7 +64,7 @@ repos:
   #       language_version: python3
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.7.0'
+    rev: 'v0.7.1'
     hooks:
     - id: ruff
       exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$'
