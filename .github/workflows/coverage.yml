@@ -34,7 +34,7 @@ jobs:
 
       - name: Build coverage file
         run: |
-          pytest tests/ | tee pytest-coverage.txt
+          pytest tests/ -vv --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=spannerflow | tee pytest-coverage.txt
 
       - name: Pytest coverage comment
         id: coverageComment
