@@ -7,7 +7,6 @@ This file will become your README and also the index of your
 documentation.
 
 <!-- Pytest Coverage Comment:Begin -->
-<a href="https://github.com/DeanLight/spannerflow/blob/main/README.md"><img alt="Coverage" src="https://img.shields.io/badge/Coverage-54%25-orange.svg" /></a><details><summary>Coverage Report </summary><table><tr><th>File</th><th>Stmts</th><th>Miss</th><th>Cover</th><th>Missing</th></tr><tbody><tr><td colspan="5"><b>spannerflow</b></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/config.py">config.py</a></td><td>28</td><td>1</td><td>96%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/config.py#L13">13</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py">engine.py</a></td><td>152</td><td>24</td><td>84%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L61">61</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L97-L101">97&ndash;101</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L106-L112">106&ndash;112</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L155-L162">155&ndash;162</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L216-L229">216&ndash;229</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py">graph_utils.py</a></td><td>81</td><td>25</td><td>69%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py#L43-L50">43&ndash;50</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py#L54-L58">54&ndash;58</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py#L63-L80">63&ndash;80</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py#L116">116</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/installations.py">installations.py</a></td><td>83</td><td>57</td><td>31%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/installations.py#L24-L25">24&ndash;25</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/installations.py#L34-L78">34&ndash;78</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/installations.py#L82-L89">82&ndash;89</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/installations.py#L96-L97">96&ndash;97</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/installations.py#L105-L140">105&ndash;140</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py">rust_dataflow.py</a></td><td>338</td><td>237</td><td>30%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L125-L155">125&ndash;155</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L166-L182">166&ndash;182</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L196-L202">196&ndash;202</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L231-L288">231&ndash;288</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L297-L314">297&ndash;314</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L325-L352">325&ndash;352</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L361-L369">361&ndash;369</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L388-L396">388&ndash;396</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L405-L421">405&ndash;421</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L424-L438">424&ndash;438</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L447-L522">447&ndash;522</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L525-L563">525&ndash;563</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L566-L579">566&ndash;579</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L582-L595">582&ndash;595</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L598-L608">598&ndash;608</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L611-L638">611&ndash;638</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L646-L660">646&ndash;660</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L663-L666">663&ndash;666</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_utils.py">rust_utils.py</a></td><td>10</td><td>4</td><td>60%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_utils.py#L18-L28">18&ndash;28</a></td></tr><tr><td><b>TOTAL</b></td><td><b>754</b></td><td><b>348</b></td><td><b>54%</b></td><td>&nbsp;</td></tr></tbody></table></details>
 <!-- Pytest Coverage Comment:End -->
 
 ## Developer Guide
@@ -70,12 +69,25 @@ find package manager specific guidelines on
 [conda](https://anaconda.org/DeanLight/spannerflow) and
 [pypi](https://pypi.org/project/spannerflow/) respectively.
 
-## How to use
+### graph input schema:
 
-Fill me in please! Don’t forget code examples:
+Nodes should follow this:
 
-``` python
-1 + 1
-```
+must have “schema” which is a list of strings must have “op” which is
+one of: \* “union” \* “rename” \* “select” \* “project” \* “groupby” \*
+“product” \* “join” \* “ie_map” \* “get_const” \* “get_rel”
 
-    2
+if “op” is “ie_map” it have to include: \* “name” which is a string \*
+“in_schema” which is a list of types or functions \* “out_schema” which
+is a list of types or functions \* “out_arity” which is a number \*
+“in_arity” which is a number
+
+if “op” is “get_const” \* “const_dict” which is a dictinary with column
+as a key (appears in “schema”) and a const as a value.
+
+if “op” is “groupby” it have to include: \* “agg” which is a list of
+strings or None in length of schema which indicates what and if to apply
+aggregation function on the column in this position
+
+if “op” is “select” it have to include: \* “theta” which is Theta object
+that indicates what selection to do
