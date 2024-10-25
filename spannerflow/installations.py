@@ -57,7 +57,7 @@ def install_protoc() -> None:
         operation_system_and_arch = f"{arch}"
     else:
         # For other systems, the naming convention includes both OS and architecture
-        operation_system_and_arch = f"{arch}-{operation_system}"
+        operation_system_and_arch = f"{operation_system}-{arch}"
 
     url = f"https://github.com/protocolbuffers/protobuf/releases/download/v28.2/protoc-28.2-{operation_system_and_arch}.zip"
 
@@ -138,3 +138,16 @@ def install_rust():
     print(f"Removed the tar.xz file: {tar_xz_filename}")
     dirs = glob.glob(f"{extract_dir}/*/*/bin")
     os.environ["PATH"] = os.pathsep.join(dirs + [os.environ["PATH"]])
+
+
+# from spannerflow.installations import install_protoc, install_rust
+
+# install_protoc()
+# extract_dir = Path("protoc").absolute()
+# protoc_bin_path = extract_dir.joinpath("bin")
+# os.environ["PATH"] = os.pathsep.join([str(protoc_bin_path), os.environ["PATH"]])
+# # TODO: add binraies as library entrypoints instead of modifying PATH
+# install_rust()
+# extract_dir = Path("rust").absolute()
+# dirs = glob.glob(f"{extract_dir}/*/*/bin")
+# os.environ["PATH"] = os.pathsep.join(dirs + [os.environ["PATH"]])
