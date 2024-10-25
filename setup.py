@@ -79,7 +79,7 @@ setuptools.setup(
     ]
     + (["License :: " + lic[1]] if lic[1] else []),
     url=cfg["git_url"],
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=["tests"]),
     include_package_data=True,
     install_requires=requirements,
     extras_require={"dev": dev_requirements},
