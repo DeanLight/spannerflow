@@ -15,6 +15,7 @@ def rust_dataflow():
     with patch(
         "spannerflow.engine.Engine.__init__", return_value=MagicMock(spec=Engine)
     ) as mock_engine:
+        mock_engine._serialize_row = Engine.__wrapped__._serialize_row
         instance = RustDataflow(config=config, engine=mock_engine)
         return instance
 
@@ -66,7 +67,7 @@ def test_dataflow_get_node_str(rust_dataflow):
     )
 
 
-def _test_dataflow_get_sources_data(rust_dataflow):
+def test_dataflow_get_sources_data(rust_dataflow):
     with patch.object(rust_dataflow._engine, "get_collections") as mock_get_collections:
         mock_get_collections.return_value = {
             "X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"],
