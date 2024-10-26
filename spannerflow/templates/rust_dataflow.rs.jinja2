@@ -62,8 +62,10 @@ fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>
 
         let mut response_stream = client.run_ie_function(Request::new(request_stream)).await?.into_inner(); // Declare as mutable since we need to iterate over it
 
-        while let Some(response) = response_stream.message().await? {            
-            output.push(response.row.clone());
+        while let Some(response) = response_stream.message().await? {       
+            let  response_row = response.row.clone();
+            println!("RESPONSE: {:?}", response_row);     
+            output.push(response_row);
         }
 
         Ok::<Vec<Vec<String>>, Box<dyn std::error::Error>>(output)

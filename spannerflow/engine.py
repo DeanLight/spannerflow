@@ -161,6 +161,21 @@ class Engine:
             for response in response_iterator:
                 yield self._deserialize_row(schema, response.row)
 
+    def set_ie_function(
+        self,
+        name: str,
+        func: Callable[[Any], Any],
+        input_types: list[type],
+        output_types: list[type],
+    ):
+        self._ie_functions[name] = (name, func, input_types, output_types)
+
+    def get_ie_function(self, name: str):
+        return self._ie_functions[name]
+
+    def del_ie_function(self, name: str):
+        del self._ie_functions[name]
+
     @staticmethod
     def _deserialize_row(schema: list[str], row: list[str]) -> list[Any]:
         new_row: list[Any] = list()

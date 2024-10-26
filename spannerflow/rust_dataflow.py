@@ -378,6 +378,7 @@ class RustDataflow:
                     out_schema_len=len(graph.nodes[node]["out_schema"]),
                     in_schema_len=len(graph.nodes[node]["in_schema"]),
                     out_schema_types=nodes_schema_types_dict[node],
+                    DATAFLOW_TO_RUST_TYPES=self.DATAFLOW_TO_RUST_TYPES,
                 )
         return code
 
