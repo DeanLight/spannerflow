@@ -3,7 +3,12 @@ repos:
     rev: 2.3.31
     hooks:
     - id: nbdev_clean
+      additional_dependencies:
+        - "setuptools"
     - id: nbdev_export
+      additional_dependencies:
+        - "setuptools"
+        - "black"
   
   - repo: local
     hooks:
@@ -31,6 +36,9 @@ repos:
     hooks:
       - id: nbqa-mypy
         exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$|setup.py'
+        additional_dependencies:
+          - "mypy"
+          - "types-requests"
       - id: nbqa-black
         exclude: '.*_pb2\.pyi$|.*_pb2\.py$|.*_pb2_grpc\.py$|setup.py'
       - id: nbqa-isort
