@@ -10,7 +10,7 @@ from spannerflow.grpc_server import IEFunctionService
 @pytest.mark.asyncio
 async def test_run_ie_function():
     ie_functions = {
-        "test_func": ("test_func", lambda x: [(int(x[0]) * 2)], [int], [int])
+        "test_func": ("test_func", lambda x: [((int(x[0]) * 2),)], [int], [int])
     }
     service = IEFunctionService(ie_functions)
 
@@ -64,7 +64,7 @@ async def test_run_ie_function_not_found():
 @pytest.mark.asyncio
 async def test_run_ie_function_no_function_name():
     ie_functions = {
-        "test_func": ("description", lambda x: [str(int(x) * 2)], [int], [int])
+        "test_func": ("description", lambda x: [(str(int(x) * 2),)], [int], [int])
     }
     service = IEFunctionService(ie_functions)
 
@@ -89,7 +89,7 @@ async def test_run_ie_function_no_function_name():
 @pytest.mark.asyncio
 async def test_run_ie_function_function_name_after_rows():
     ie_functions = {
-        "test_func": ("description", lambda x: [str(int(x) * 2)], [int], [int])
+        "test_func": ("description", lambda x: [(str(int(x) * 2),)], [int], [int])
     }
     service = IEFunctionService(ie_functions)
 
@@ -119,7 +119,7 @@ async def test_run_ie_function_function_name_after_rows():
 @pytest.mark.asyncio
 async def test_run_ie_function_multiple_function_name():
     ie_functions = {
-        "test_func": ("description", lambda x: [str(int(x) * 2)], [int], [int])
+        "test_func": ("description", lambda x: [(str(int(x) * 2),)], [int], [int])
     }
     service = IEFunctionService(ie_functions)
 

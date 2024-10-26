@@ -64,10 +64,13 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
             return
 
         for row in rows:
-            response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
-                row=[str(cell) for cell in func(*row)]
-            )
-            yield response
+            res = func(*row)
+
+            for r in res:
+                response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
+                    row=[str(cell) for cell in r]
+                )
+                yield response
 
 
 async def run_server(
