@@ -222,8 +222,8 @@ class Engine:
                 fn_name=fn_name,
             )
             response_iterator = stub.RunDataflow(request)
-            schema_types = reversed_graph.nodes[find_output(reversed_graph)][
-                "schema_types"
+            schema_types = reversed_graph.graph["nodes_schema_types_dict"][
+                find_output(reversed_graph)
             ]
             for response in response_iterator:
                 yield self._deserialize_row(

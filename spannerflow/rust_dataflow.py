@@ -83,6 +83,7 @@ class RustDataflow:
     def get_sources_data(
         self,
         graph: nx.DiGraph,
+        nodes_schema_types_dict: dict[str | int, list[str]],
     ) -> dict[str | int, dict[str, str | int | list[str]]]:
         data = dict()
         for source in find_sources(graph):
@@ -93,15 +94,16 @@ class RustDataflow:
                 "op": op,
             }
 
-            if "schema_types" not in gr_node:
+            if source not in nodes_schema_types_dict:
                 data[source]["schema"] = self.get_input_schema(source)
             else:
                 data[source]["schema"] = [
-                    self.DATAFLOW_TO_RUST_TYPES[t] for t in gr_node["schema_types"]
+                    self.DATAFLOW_TO_RUST_TYPES[t]
+                    for t in nodes_schema_types_dict[source]
                 ]
                 if op == "get_const":
                     data[source]["consts"] = self._engine._serialize_row(
-                        gr_node["schema_types"],
+                        nodes_schema_types_dict[source],
                         [gr_node["const_dict"][col] for col in gr_node["schema"]],
                     )
         return data
@@ -121,6 +123,7 @@ class RustDataflow:
         node: str | int,
         anchor: str | int | None = None,
         in_iterate: bool = False,
+        nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
         join1, join2 = list(graph.pred[node])
         out_node_str = self.get_node_str(node)
@@ -162,6 +165,7 @@ class RustDataflow:
         node: str | int,
         anchor: str | int | None = None,
         in_iterate: bool = False,
+        nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
         preds = [
             pred
@@ -175,7 +179,7 @@ class RustDataflow:
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
 
         if len(preds) == 1:
-            return f"let {node_str} = {prev_node1_str};"
+            return f"let {' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.clone();"
         prev_node2_str = self.get_node_str(
             preds[1], anchor=anchor, in_iterate=in_iterate
         )
@@ -227,20 +231,32 @@ class RustDataflow:
             case _:
                 raise ValueError(f"Unsupported operation: {gr_node['op']}")
 
-    def prepare_node(self, graph: nx.DiGraph, node: str | int) -> None:
+    def prepare_node(
+        self,
+        graph: nx.DiGraph,
+        node: str | int,
+        nodes_schema_types_dict: dict[str | int, list[str]],
+    ) -> None:
         gr_node = graph.nodes[node]
-        preds = [graph.nodes[key] for key in graph.pred[node].keys()]
-        if "schema_types" in gr_node:
+        preds = [
+            {**graph.nodes[node_name], "node_name": node_name}
+            for node_name in graph.pred[node]
+        ]
+        if node in nodes_schema_types_dict:
             return
         match gr_node["op"]:
             case "get_rel":
-                gr_node["schema_types"] = self.get_input_schema_types(node)
+                nodes_schema_types_dict[node] = self.get_input_schema_types(node)
             case "rename" | "select" | "union":
-                gr_node["schema_types"] = preds[0]["schema_types"]
+                nodes_schema_types_dict[node] = nodes_schema_types_dict[
+                    preds[0]["node_name"]
+                ]
             case "project":
                 pred = preds[0]
-                gr_node["schema_types"] = [
-                    pred["schema_types"][pred["schema"].index(col)]
+                nodes_schema_types_dict[node] = [
+                    nodes_schema_types_dict[pred["node_name"]][
+                        pred["schema"].index(col)
+                    ]
                     for col in gr_node["schema"]
                 ]
             case "product" | "join":
@@ -248,23 +264,31 @@ class RustDataflow:
                 for x in gr_node["schema"]:
                     try:
                         index = preds[0]["schema"].index(x)
-                        schema_types.append(preds[0]["schema_types"][index])
+                        schema_types.append(
+                            nodes_schema_types_dict[preds[0]["node_name"]][index]
+                        )
                     except ValueError:
                         index = preds[1]["schema"].index(x)
-                        schema_types.append(preds[1]["schema_types"][index])
-                gr_node["schema_types"] = schema_types
+                        schema_types.append(
+                            nodes_schema_types_dict[preds[1]["node_name"]][index]
+                        )
+                nodes_schema_types_dict[node] = schema_types
             case "groupby":
                 schema_types = []
                 for index, agg in enumerate(gr_node["agg"]):
                     if agg is None:
-                        schema_types.append(preds[0]["schema_types"][index])
-                    elif agg == "count":
+                        schema_types.append(
+                            nodes_schema_types_dict[preds[0]["node_name"]][index]
+                        )
+                    elif (
+                        agg == "count"
+                    ):  # what about min / max should it match int if the field is int?
                         schema_types.append("DATA_TYPE_INT")
                     else:
                         schema_types.append("DATA_TYPE_FLOAT")
-                gr_node["schema_types"] = schema_types
+                nodes_schema_types_dict[node] = schema_types
             case "get_const":
-                gr_node["schema_types"] = [
+                nodes_schema_types_dict[node] = [
                     self.PYTHON_TO_DATAFLOW_TYPES[type(const)]
                     for const in gr_node["const_dict"].values()
                 ]
@@ -273,7 +297,7 @@ class RustDataflow:
                     gr_node["in_schema"] = gr_node["in_schema"](gr_node["in_arity"])
                 if callable(gr_node["out_schema"]):
                     gr_node["out_schema"] = gr_node["out_schema"](gr_node["out_arity"])
-                gr_node["schema_types"] = [
+                nodes_schema_types_dict[node] = [
                     (
                         self.PYTHON_TO_DATAFLOW_TYPES[t]
                         # TODO Support multiple types
@@ -291,12 +315,13 @@ class RustDataflow:
         self,
         graph: nx.DiGraph,
         node: str | int,
+        nodes_schema_types_dict: dict[str | int, list[str]],
         anchor: str | int | None = None,
         in_iterate: bool = False,
     ) -> str:
         gr_node = graph.nodes[node]
         self.validate_node(graph, node)
-        self.prepare_node(graph, node)
+        self.prepare_node(graph, node, nodes_schema_types_dict)
         op_to_code_generator = {
             "get_rel": self.get_from_input_code,
             "rename": self.get_rename_code,
@@ -312,7 +337,11 @@ class RustDataflow:
         if gr_node["op"] not in op_to_code_generator:
             raise ValueError(f"Unsupported operation: {gr_node['op']}")
         return op_to_code_generator[gr_node["op"]](
-            graph, node, anchor=anchor, in_iterate=in_iterate
+            graph,
+            node,
+            anchor=anchor,
+            in_iterate=in_iterate,
+            nodes_schema_types_dict=nodes_schema_types_dict,
         )
 
     def get_ie_map_code(
@@ -321,6 +350,7 @@ class RustDataflow:
         node: str | int,
         anchor: str | int | None = None,
         in_iterate: bool = False,
+        nodes_schema_types_dict: dict[str | int, list[str]] = {},
     ) -> str:
         prev_nodes = list(graph.pred[node])
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
@@ -347,7 +377,7 @@ class RustDataflow:
                     ),
                     out_schema_len=len(graph.nodes[node]["out_schema"]),
                     in_schema_len=len(graph.nodes[node]["in_schema"]),
-                    out_schema_types=graph.nodes[node]["schema_types"],
+                    out_schema_types=nodes_schema_types_dict[node],
                 )
         return code
 
@@ -357,6 +387,7 @@ class RustDataflow:
         node: str | int,
         anchor: str | int | None = None,
         in_iterate: bool = False,
+        nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
         schema = get_node_schema(graph, node)
         prev_nodes = list(graph.pred[node])
@@ -374,6 +405,7 @@ class RustDataflow:
         node: str | int,
         anchor: str | int | None = None,
         in_iterate: bool = False,
+        nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
         return f"let {node_str} = input_{node}.to_collection(scope);"
@@ -384,8 +416,12 @@ class RustDataflow:
         node: str | int,
         anchor: str | int | None = None,
         in_iterate: bool = False,
+        nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
-        schema = get_node_schema(graph, node)
+        schema = self.get_col_schema(
+            self.update_repeatable_cols_in_schema(graph.nodes[node]["schema"])
+        )
+
         prev_nodes = list(graph.pred[node])
 
         prev_node_str = self.get_node_str(
@@ -401,6 +437,7 @@ class RustDataflow:
         node: str | int,
         anchor: str | int | None = None,
         in_iterate: bool = False,
+        nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
         gr_node = graph.nodes[node]
         prev_nodes = list(graph.pred[node])
@@ -411,14 +448,16 @@ class RustDataflow:
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
 
         theta = gr_node["theta"]
-        preds = []
+        predicates = []
         if hasattr(theta, "pos_val_tuples"):  #  equalConstTheta
-            preds = [f"*col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
+            predicates = [f"*col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
         elif hasattr(theta, "col_pos_tuples"):  #  equalColTheta
-            preds = [f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples]
+            predicates = [
+                f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples
+            ]
         else:
             raise ValueError(f"Unsupported theta join: {theta}. {dir(theta)}")
-        return f"let {node_str} = {prev_node_str}.filter(|{get_node_schema(graph, prev_nodes[0])}| {' && '.join(preds)});"
+        return f"let {node_str} = {prev_node_str}.filter(|{self.get_col_schema([f"col_{i}" for i in range(len(gr_node['schema']))])}| {' && '.join(predicates)});"
 
     def update_repeatable_cols_in_schema(self, schema: list[str]) -> list[str]:
         repeatable_cols: dict[str, list[int]] = {}
@@ -443,6 +482,7 @@ class RustDataflow:
         node: str | int,
         anchor: str | int | None = None,
         in_iterate: bool = False,
+        nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
         gr_node = graph.nodes[node]
         prev_nodes = list(graph.pred[node])
@@ -521,29 +561,43 @@ class RustDataflow:
         )
         return code
 
-    def generate_graph_code(self, graph: nx.DiGraph) -> list[str]:
+    def generate_graph_code(
+        self,
+        graph: nx.DiGraph,
+        nodes_schema_types_dict: dict[str | int, list[str]],
+    ) -> list[str]:
         flow_code = list()
-
         iterate_template = self._template_env.get_template("iterate.rs.jinja2")
         reduced, cycles = reduced_graph(graph)
         for node in list(nx.topological_sort(reduced)):
-            self.prepare_node(reduced, node)
+            self.prepare_node(
+                reduced, node, nodes_schema_types_dict=nodes_schema_types_dict
+            )
             if node in cycles.keys():
-                cycles[node].nodes[f"iter_{node}"]["schema_types"] = reduced.nodes[
-                    node
-                ]["schema_types"]
-                self.prepare_node(cycles[node], f"iter_{node}")
+                nodes_schema_types_dict[f"iter_{node}"] = nodes_schema_types_dict[node]
+                self.prepare_node(
+                    cycles[node],
+                    f"iter_{node}",
+                    nodes_schema_types_dict=nodes_schema_types_dict,
+                )
                 iter_graph = create_iter_graph(graph, cycles[node], node)
-                iter_graph.nodes[f"iter_{node}"]["schema_types"] = reduced.nodes[node][
-                    "schema_types"
-                ]
-                anchor_code = self.generate_node_code(reduced, node)
+                anchor_code = self.generate_node_code(
+                    reduced, node, nodes_schema_types_dict
+                )
                 cycle_code = {}
                 cycle_order = traverse_cycle(cycles[node], f"iter_{node}")
                 for cycle_node in cycle_order:
-                    self.prepare_node(iter_graph, cycle_node)
+                    self.prepare_node(
+                        iter_graph,
+                        cycle_node,
+                        nodes_schema_types_dict=nodes_schema_types_dict,
+                    )
                     cycle_code[cycle_node] = self.generate_node_code(
-                        iter_graph, cycle_node, anchor=f"iter_{node}", in_iterate=True
+                        iter_graph,
+                        cycle_node,
+                        nodes_schema_types_dict,
+                        anchor=f"iter_{node}",
+                        in_iterate=True,
                     )
                 flow_code.append(
                     iterate_template.render(
@@ -559,7 +613,9 @@ class RustDataflow:
                     )
                 )
             else:
-                flow_code.append(self.generate_node_code(reduced, node))
+                flow_code.append(
+                    self.generate_node_code(reduced, node, nodes_schema_types_dict)
+                )
         return flow_code
 
     def create_cargo_toml(self, timestamp: str) -> None:
@@ -581,11 +637,14 @@ class RustDataflow:
     def create_rust_file(self, timestamp: str, graph: nx.DiGraph) -> None:
         dest_path = self._config.GENERATED_RUST_PROJECT_PATH / "src" / f"{timestamp}.rs"
         template = self._template_env.get_template(self._config.RUST_FILE_TEMPLATE_NAME)
-        flow_code = self.generate_graph_code(graph)
+        nodes_schema_types_dict: dict[str | int, list[str]] = dict()
+        flow_code = self.generate_graph_code(graph, nodes_schema_types_dict)
         output_node = find_output(graph)
         output_text = template.render(
             query_id=self._query_id,
-            sources=self.get_sources_data(graph),
+            sources=self.get_sources_data(
+                graph, nodes_schema_types_dict=nodes_schema_types_dict
+            ),
             flow_code=flow_code,
             output_node_str=self.get_node_str(output_node),
             output_vars_count=len(graph.nodes[output_node]["schema"]),
@@ -593,6 +652,8 @@ class RustDataflow:
 
         with open(dest_path, "w") as f:
             f.write(output_text)
+
+        graph.graph["nodes_schema_types_dict"] = nodes_schema_types_dict
 
     def create_rust_build_file(self) -> None:
         dest_path = self._config.GENERATED_RUST_PROJECT_PATH / "build.rs"

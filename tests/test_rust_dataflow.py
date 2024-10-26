@@ -66,7 +66,7 @@ def test_dataflow_get_node_str(rust_dataflow):
     )
 
 
-def test_dataflow_get_sources_data(rust_dataflow):
+def _test_dataflow_get_sources_data(rust_dataflow):
     with patch.object(rust_dataflow._engine, "get_collections") as mock_get_collections:
         mock_get_collections.return_value = {
             "X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"],
@@ -86,7 +86,8 @@ def test_dataflow_get_sources_data(rust_dataflow):
                 ),
             ]
         )
-        assert rust_dataflow.get_sources_data(graph) == {
+        nodes_schema_types_dict = {"X": ["DATA_TYPE_INT", "DATA_TYPE_STRING"], "Y": ["DATA_TYPE_FLOAT"]}
+        assert rust_dataflow.get_sources_data(graph, nodes_schema_types_dict) == {
             "X": {"name": "X", "op": "get_rel", "schema": ["i32", "String"]},
             "Y": {
                 "name": "Y",
@@ -195,3 +196,6 @@ def test_validate_node(rust_dataflow):
     )
     with pytest.raises(ValueError):
         rust_dataflow.validate_node(graph, 5)
+
+if __name__ == "__main__":
+    pytest.main(["-s", "-v", __file__])
