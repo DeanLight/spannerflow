@@ -30,8 +30,14 @@ class Config:
     RUST_PROJECT_NAME: str = "spannerflow"
     RUST_DEPENDENCIES: list[dict[str, str]] = field(
         default_factory=lambda: [
-            {"name": "timely", "version": "0.12.0"},
-            {"name": "differential-dataflow", "version": "0.12.0"},
+            {
+                "name": "timely",
+                "json": '{ git = "https://github.com/TimelyDataflow/timely-dataflow" }',
+            },
+            {
+                "name": "differential-dataflow",
+                "json": '{ git = "https://github.com/TimelyDataflow/differential-dataflow" }',
+            },
             {"name": "prost", "version": "0.13.3"},
             {"name": "prost-types", "version": "0.13.3"},
             {"name": "tonic", "version": "0.12.3"},
