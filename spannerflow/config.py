@@ -9,10 +9,11 @@ __all__ = ['Config']
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# %% ../nbs/00_config.ipynb 4
 if "__file__" not in globals():
     __file__ = str(Path.cwd())
 
-
+# %% ../nbs/00_config.ipynb 6
 @dataclass
 class Config:
     LISTEN_PORT: int = 50052

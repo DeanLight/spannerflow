@@ -10,7 +10,7 @@ __all__ = ['find_sources', 'find_output', 'change_node_key', 'get_cycles', 'find
 # %% ../nbs/30_graph_utils.ipynb 2
 import networkx as nx
 
-
+# %% ../nbs/30_graph_utils.ipynb 4
 def find_sources(graph: nx.DiGraph) -> list[str | int]:
     return [node for node in graph.nodes() if graph.in_degree(node) == 0]
 

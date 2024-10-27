@@ -13,6 +13,7 @@ import grpc
 from .config import Config
 from .dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
 
+# %% ../nbs/40_grpc_server.ipynb 4
 config = Config()
 
 

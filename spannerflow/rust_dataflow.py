@@ -29,9 +29,8 @@ from spannerflow.graph_utils import (
     reduced_graph,
     traverse_cycle,
 )
-from .rust_utils import build_rust
 
-
+# %% ../nbs/50_rust_dataflow.ipynb 4
 @singleton
 class RustDataflow:
     DATAFLOW_TO_RUST_TYPES = {
@@ -678,7 +677,7 @@ class RustDataflow:
         self.create_cargo_toml(timestamp)
         self.create_rust_file(timestamp, graph)
         self.create_rust_build_file()
-        build_rust(
+        self.build_rust(
             self._config.GENERATED_RUST_PROJECT_PATH.joinpath(
                 self._cargo_file_name
             ).absolute(),
@@ -726,3 +725,22 @@ class RustDataflow:
             raise RuntimeError("Server is not running")
         self._server_process.terminate()
         self._is_server_running = False
+
+    def build_rust(self, cargo_toml_path: Path, log_path: Path) -> None:
+        command = [
+            "cargo",
+            "build",
+            "--release",
+            "--manifest-path",
+            str(cargo_toml_path),
+        ]
+
+        self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a") as log_file:
+            subprocess.run(
+                command,
+                cwd=str(cargo_toml_path.parent),
+                check=True,
+                stderr=log_file,
+                stdout=log_file,
+            )
