@@ -12,12 +12,10 @@ from pathlib import Path
 # %% ../nbs/00_config.ipynb 6
 @dataclass
 class Config:
-    LISTEN_PORT: int = 50052
+    LISTEN_PORT: int
+    DATAFLOW_PORT: int
     LISTEN_IP: str = "localhost"
-    LISTEN_ADDRESS: str = f"{LISTEN_IP}:{LISTEN_PORT}"
-    DATAFLOW_PORT: int = 50051
     DATAFLOW_IP: str = "localhost"
-    DATAFLOW_ADDRESS: str = f"{DATAFLOW_IP}:{DATAFLOW_PORT}"
     PACKAGE_ROOT = Path(__file__).parent
     GENERATED_RUST_PROJECT_PATH: Path = PACKAGE_ROOT.joinpath("generated_rust")
     RUST_SERVER_PATH: Path = PACKAGE_ROOT.joinpath("rust_server")
@@ -55,3 +53,11 @@ class Config:
     RUST_SERVER_LOG_PATH: Path = LOGS_DIR.joinpath("rust_server.log")
     RUST_SERVER_BUILD_LOG_PATH: Path = LOGS_DIR.joinpath("rust_server_build.log")
     RUST_SO_BUILD_LOG_PATH: Path = LOGS_DIR.joinpath("rust_so_build.log")
+
+    @property
+    def LISTEN_ADDRESS(self) -> str:
+        return f"{self.LISTEN_IP}:{self.LISTEN_PORT}"
+
+    @property
+    def DATAFLOW_ADDRESS(self) -> str:
+        return f"{self.DATAFLOW_IP}:{self.DATAFLOW_PORT}"

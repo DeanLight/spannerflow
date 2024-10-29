@@ -6,11 +6,13 @@
 __all__ = ['Engine']
 
 # %% ../nbs/60_engine.ipynb 2
-import asyncio
-import inspect
 import math
+import os
+import socket
 import subprocess
 import threading
+import time
+from concurrent import futures
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Generator
@@ -23,72 +25,93 @@ from google.protobuf.json_format import MessageToDict
 from .config import Config
 from .dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
 from .graph_utils import find_output
-from .grpc_server import run_server
+from .grpc_server import IEFunctionService
 
 # %% ../nbs/60_engine.ipynb 4
 class Engine:
     def __init__(
         self,
-        config: Config = Config(),
         ie_functions: dict[
             str, tuple[str, Callable[[Any], Any], list[type], list[type]]
         ] = dict(),
     ):
         from spannerflow.rust_dataflow import RustDataflow
 
-        self._config = config
+        port_1, port_2 = self.find_server_ports()
+        self._config = Config(DATAFLOW_PORT=port_1, LISTEN_PORT=port_2)
         self._ie_functions = ie_functions
-        self._rust_dataflow = RustDataflow(config=config, engine=self)  # type: ignore
+        self._rust_dataflow = RustDataflow(config=self._config, engine=self)  # type: ignore
         self._is_rust_server_running = False
         self._is_python_server_running = False
         self._rust_server_process: None | subprocess.Popen = None
-        self._python_server_task: None | asyncio.Task = None
+        self._python_grpc_server: None | grpc.server = None
+
+    def find_server_ports(self) -> tuple[int, int]:
+        port_1 = None
+        port_2 = None
+        current_port = 50051
+        while port_1 is None or port_2 is None:
+            if self._is_port_available(current_port):
+                if port_1 is None:
+                    port_1 = current_port
+                else:
+                    port_2 = current_port
+            current_port += 1
+        return port_1, port_2
+
+    def _is_port_available(self, port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            return sock.connect_ex(("localhost", port)) != 0
 
     @staticmethod
     def ensure_server_running(func):
         @wraps(func)
-        async def async_wrapper(self, *args, **kwargs):
+        def wrapper(self, *args, **kwargs):
             self._run_rust_server_in_background()
-            await self._run_python_server_in_background()
-            return await func(self, *args, **kwargs)
-
-        @wraps(func)
-        def sync_wrapper(self, *args, **kwargs):
-            self._run_rust_server_in_background()
-            asyncio.run(self._run_python_server_in_background())
+            self._run_python_server_in_background()
+            time.sleep(1)
             return func(self, *args, **kwargs)
 
-        return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
+        return wrapper
 
     def close(self):
         self._stop_rust_server()
-        asyncio.run(self._stop_python_server())
+        self._stop_python_server()
 
-    async def _run_python_server_in_background(self) -> None:
-        if not self._is_python_server_running:
-            self._python_server_task = asyncio.create_task(
-                run_server(self._ie_functions)
+    def _run_python_server_in_background(self) -> None:
+        def run_server() -> None:
+            self._python_grpc_server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=10)
             )
+            dataflow_pb2_grpc.add_IEFunctionServiceServicer_to_server(
+                IEFunctionService(self._ie_functions), self._python_grpc_server
+            )
+            self._python_grpc_server.add_insecure_port(self._config.LISTEN_ADDRESS)
+            self._python_grpc_server.start()
+            self._python_grpc_server.wait_for_termination()
+
+        if not self._is_python_server_running:
+            threading.Thread(target=run_server, daemon=True).start()
             self._is_python_server_running = True
 
-    async def _stop_python_server(self):
+    def _stop_python_server(self):
         if not self._is_python_server_running:
             return
-        self._python_server_task.cancel()
-        try:
-            await self._python_server_task
-        except asyncio.CancelledError:
-            pass
+        self._python_grpc_server.stop(0)
         self._is_python_server_running = False
 
     def _run_rust_server_in_background(self) -> None:
         def inner() -> None:
-            # TODO: handle port is already in use
             server_path = self._config.RUST_SERVER_PATH
             self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
             with open(self._config.RUST_SERVER_LOG_PATH, "a") as log_file:
+                env = os.environ.copy()
+                env["BIND_PORT"] = str(self._config.DATAFLOW_PORT)
                 self._rust_server_process = subprocess.Popen(
-                    [str(server_path)], stdout=log_file, stderr=log_file
+                    [str(server_path)],
+                    stdout=log_file,
+                    stderr=log_file,
+                    env=env,
                 )
                 self._rust_server_process.communicate()
 

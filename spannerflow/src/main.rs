@@ -388,7 +388,9 @@ impl DataflowService for MyDataflowService {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bind_ip = env::var("BIND_IP").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let addr = (bind_ip + ":50051").parse()?;
+    let bind_port = env::var("BIND_PORT").unwrap_or_else(|_| "50051".to_string());
+    let addr_string = format!("{}:{}", bind_ip, bind_port);
+    let addr = addr_string.parse()?;
     let dataflow = MyDataflowService::default();
 
     Server::builder()
