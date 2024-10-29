@@ -7,8 +7,11 @@ __all__ = ['Engine']
 
 # %% ../nbs/60_engine.ipynb 2
 import asyncio
+import inspect
 import math
+import subprocess
 import threading
+from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Generator
 
@@ -16,7 +19,6 @@ import grpc
 import networkx as nx
 from google.protobuf import empty_pb2
 from google.protobuf.json_format import MessageToDict
-from singleton_decorator import singleton
 
 from .config import Config
 from .dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
@@ -24,7 +26,6 @@ from .graph_utils import find_output
 from .grpc_server import run_server
 
 # %% ../nbs/60_engine.ipynb 4
-@singleton
 class Engine:
     def __init__(
         self,
@@ -37,35 +38,72 @@ class Engine:
 
         self._config = config
         self._ie_functions = ie_functions
-        self._rust_dataflow = RustDataflow(config=config, engine=self)
-        self._is_open = False
+        self._rust_dataflow = RustDataflow(config=config, engine=self)  # type: ignore
+        self._is_rust_server_running = False
+        self._is_python_server_running = False
+        self._rust_server_process: None | subprocess.Popen = None
+        self._python_server_task: None | asyncio.Task = None
 
-    def __enter__(self):
-        def inner():
-            asyncio.run(run_server(self._ie_functions))
+    @staticmethod
+    def ensure_server_running(func):
+        @wraps(func)
+        async def async_wrapper(self, *args, **kwargs):
+            self._run_rust_server_in_background()
+            await self._run_python_server_in_background()
+            return await func(self, *args, **kwargs)
 
-        if not self._is_open:
-            threading.Thread(target=inner, daemon=True).start()
-            self._rust_dataflow.__enter__()
-            self._is_open = True
-        return self
+        @wraps(func)
+        def sync_wrapper(self, *args, **kwargs):
+            self._run_rust_server_in_background()
+            asyncio.run(self._run_python_server_in_background())
+            return func(self, *args, **kwargs)
 
-    def open(self):
-        if self._is_open:
-            return
-
-        self.__enter__()
+        return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
 
     def close(self):
-        if not self._is_open:
+        self._stop_rust_server()
+        asyncio.run(self._stop_python_server())
+
+    async def _run_python_server_in_background(self) -> None:
+        if not self._is_python_server_running:
+            self._python_server_task = asyncio.create_task(
+                run_server(self._ie_functions)
+            )
+            self._is_python_server_running = True
+
+    async def _stop_python_server(self):
+        if not self._is_python_server_running:
             return
-        self.__exit__(None, None, None)
+        self._python_server_task.cancel()
+        try:
+            await self._python_server_task
+        except asyncio.CancelledError:
+            pass
+        self._is_python_server_running = False
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._is_open:
-            self._rust_dataflow.__exit__(exc_type, exc_value, traceback)
-            self._is_open = False
+    def _run_rust_server_in_background(self) -> None:
+        def inner() -> None:
+            # TODO: handle port is already in use
+            server_path = self._config.RUST_SERVER_PATH
+            self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
+            with open(self._config.RUST_SERVER_LOG_PATH, "a") as log_file:
+                self._rust_server_process = subprocess.Popen(
+                    [str(server_path)], stdout=log_file, stderr=log_file
+                )
+                self._rust_server_process.communicate()
 
+        if self._is_rust_server_running:
+            return
+        threading.Thread(target=inner).start()
+        self._is_rust_server_running = True
+
+    def _stop_rust_server(self):
+        if not self._is_rust_server_running:
+            return
+        self._rust_server_process.terminate()
+        self._is_rust_server_running = False
+
+    @ensure_server_running
     def save_to_csv(self, collection_name: str, file_path: Path) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -74,6 +112,7 @@ class Engine:
             )
             stub.SaveToCSV(request)
 
+    @ensure_server_running
     def load_from_csv(self, collection_name: str, file_path: Path) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -82,6 +121,7 @@ class Engine:
             )
             stub.LoadFromCSV(request)
 
+    @ensure_server_running
     def add_row(self, collection_name: str, row: list[Any]) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -102,6 +142,7 @@ class Engine:
                 row=dataflow_pb2.RowRequest(row=self._serialize_row(schema, row))  # type: ignore
             )
 
+    @ensure_server_running
     def add_rows(self, collection_name: str, rows: list[list[Any]]) -> None:
         schema = self.get_collections()[collection_name]
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
@@ -111,6 +152,7 @@ class Engine:
             )
             stub.AddRows(request_generator)
 
+    @ensure_server_running
     def delete_row(self, collection_name: str, row: list[Any]) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -120,6 +162,7 @@ class Engine:
             )
             stub.DeleteRow(request)
 
+    @ensure_server_running
     def add_collection(
         self,
         collection_name: str,
@@ -132,6 +175,7 @@ class Engine:
             )
             stub.AddCollection(request)
 
+    @ensure_server_running
     def delete_collection(self, collection_name: str) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -140,6 +184,7 @@ class Engine:
             )
             stub.DeleteCollection(request)
 
+    @ensure_server_running
     def get_collections(self) -> dict[str, list[str]]:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -151,6 +196,7 @@ class Engine:
                 d["name"]: d["schema"] for d in MessageToDict(response)["collections"]
             }
 
+    @ensure_server_running
     def get_collection(self, collection_name) -> Generator[list[str], None, None]:
         schema = self.get_collections()[collection_name]
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
@@ -224,6 +270,7 @@ class Engine:
                     raise ValueError(f"Unknown data type: {col_type}")
         return new_row
 
+    @ensure_server_running
     def run_dataflow(
         self,
         reversed_graph: nx.DiGraph,

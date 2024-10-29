@@ -84,4 +84,10 @@ async def run_server(
 
     server.add_insecure_port(config.LISTEN_ADDRESS)
     await server.start()
-    await server.wait_for_termination()  # Keep the server running
+    try:
+        await server.wait_for_termination()
+    except Exception as e:
+        print(f"Server terminated with exception: {e}")
+    finally:
+        await server.stop(5)
+        print("gRPC server shut down.")

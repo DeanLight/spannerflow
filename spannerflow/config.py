@@ -9,10 +9,6 @@ __all__ = ['Config']
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# %% ../nbs/00_config.ipynb 4
-if "__file__" not in globals():
-    __file__ = str(Path.cwd())
-
 # %% ../nbs/00_config.ipynb 6
 @dataclass
 class Config:
@@ -22,9 +18,10 @@ class Config:
     DATAFLOW_PORT: int = 50051
     DATAFLOW_IP: str = "localhost"
     DATAFLOW_ADDRESS: str = f"{DATAFLOW_IP}:{DATAFLOW_PORT}"
-    GENERATED_RUST_PROJECT_PATH: Path = Path(__file__).parent.joinpath("generated_rust")
-    RUST_SERVER_PATH: Path = Path(__file__).parent.joinpath("rust_server")
-    TEMPLATES_PATH: Path = Path(__file__).parent.joinpath("templates")
+    PACKAGE_ROOT = Path(__file__).parent
+    GENERATED_RUST_PROJECT_PATH: Path = PACKAGE_ROOT.joinpath("generated_rust")
+    RUST_SERVER_PATH: Path = PACKAGE_ROOT.joinpath("rust_server")
+    TEMPLATES_PATH: Path = PACKAGE_ROOT.joinpath("templates")
     CARGO_TOML_TEMPLATE_NAME: str = "Cargo.toml.jinja2"
     RUST_FILE_TEMPLATE_NAME: str = "rust_dataflow.rs.jinja2"
     RUST_BUILD_TEMPLATE_NAME: str = "build.rs.jinja2"

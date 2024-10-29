@@ -15,7 +15,7 @@ def rust_dataflow():
     with patch(
         "spannerflow.engine.Engine.__init__", return_value=MagicMock(spec=Engine)
     ) as mock_engine:
-        mock_engine._serialize_row = Engine.__wrapped__._serialize_row
+        mock_engine._serialize_row = Engine._serialize_row
         instance = RustDataflow(config=config, engine=mock_engine)
         return instance
 
@@ -116,33 +116,6 @@ def test_dataflow_get_from_input_code(rust_dataflow):
         rust_dataflow.get_from_input_code(graph, node, anchor, in_iterate)
         == "let node_1 = input_1.to_collection(scope);"
     )
-
-
-def test_dataflow___enter__(rust_dataflow):
-    with patch.object(
-        rust_dataflow, "_run_rust_server_in_background"
-    ) as mock_run_rust_server_in_background:
-        rust_dataflow._is_server_running = True
-        obj = rust_dataflow.__enter__()
-        mock_run_rust_server_in_background.assert_not_called()
-        assert obj == rust_dataflow
-
-        rust_dataflow._is_server_running = False
-        obj = rust_dataflow.__enter__()
-        mock_run_rust_server_in_background.assert_called_once()
-        assert obj == rust_dataflow
-
-
-def test_dataflow___exit__(rust_dataflow):
-    with patch.object(rust_dataflow, "_stop_rust_server") as mock_stop_rust_server:
-        rust_dataflow._is_server_running = False
-        rust_dataflow.__exit__(None, None, None)
-        mock_stop_rust_server.assert_not_called()
-
-        rust_dataflow._is_server_running = True
-        rust_dataflow.__exit__(None, None, None)
-        mock_stop_rust_server.assert_called_once()
-
 
 def test_validate_node(rust_dataflow):
     graph = nx.DiGraph()

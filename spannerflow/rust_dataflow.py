@@ -8,13 +8,11 @@ __all__ = ['RustDataflow']
 # %% ../nbs/50_rust_dataflow.ipynb 2
 import os
 import subprocess
-import threading
 from datetime import datetime
 from pathlib import Path
 
 import jinja2
 import networkx as nx
-from singleton_decorator.decorator import _SingletonWrapper, singleton
 
 from .config import Config
 from .engine import Engine
@@ -31,7 +29,6 @@ from spannerflow.graph_utils import (
 )
 
 # %% ../nbs/50_rust_dataflow.ipynb 4
-@singleton
 class RustDataflow:
     DATAFLOW_TO_RUST_TYPES = {
         "DATA_TYPE_STRING": "String",
@@ -48,28 +45,15 @@ class RustDataflow:
         object: "DATA_TYPE_STRING",
     }
 
-    def __init__(
-        self, config: Config = Config(), engine: _SingletonWrapper | None = None
-    ):
+    def __init__(self, engine: Engine, config: Config):
+        self._engine = engine
         self._config = config
-        self._engine = engine or Engine(config)
         self._query_id = 0
         self._cargo_file_name = "Cargo.toml"
         self._template_loader = jinja2.FileSystemLoader(
             searchpath=self._config.TEMPLATES_PATH
         )
         self._template_env = jinja2.Environment(loader=self._template_loader)
-        self._is_server_running = False
-        self._server_process: None | subprocess.Popen = None
-
-    def __enter__(self):
-        if not self._is_server_running:
-            self._run_rust_server_in_background()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._is_server_running:
-            self._stop_rust_server()
 
     def get_input_schema_types(self, node: int | str) -> list[str]:
         collections = self._engine.get_collections()
@@ -702,29 +686,6 @@ class RustDataflow:
             ),
             f"query_{self._query_id}",
         )
-
-    def _run_rust_server_in_background(self) -> None:
-        def inner() -> None:
-            # TODO: handle port is already in use
-            server_path = self._config.RUST_SERVER_PATH
-            self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
-            with open(self._config.RUST_SERVER_LOG_PATH, "a") as log_file:
-                self._server_process = subprocess.Popen(
-                    [str(server_path)], stdout=log_file, stderr=log_file
-                )
-                self._server_process.communicate()
-
-        if self._is_server_running:
-            raise RuntimeError("Server is already running")
-        threading.Thread(target=inner).start()
-
-        self._is_server_running = True
-
-    def _stop_rust_server(self):
-        if not self._is_server_running:
-            raise RuntimeError("Server is not running")
-        self._server_process.terminate()
-        self._is_server_running = False
 
     def build_rust(self, cargo_toml_path: Path, log_path: Path) -> None:
         command = [

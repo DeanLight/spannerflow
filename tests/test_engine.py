@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -11,62 +11,12 @@ from spannerflow.engine import Engine
 @pytest.fixture
 def engine():
     config = Config()
-    Engine._instance = None
-    with patch("spannerflow.engine.Engine.__new__", return_value=None):
-        instance = Engine(config=config)
-        instance._config = config
-        instance._is_open = False
-        instance._rust_dataflow = MagicMock()
-        return instance
-
-
-def test_engine_open(engine):
-    with patch.object(engine, "__enter__") as mock_enter:
-        engine._is_open = True
-        engine.open()
-        mock_enter.assert_not_called()
-
-        engine._is_open = False
-        engine.open()
-        engine.__enter__.assert_called_once()
-
-
-def test_engine_close(engine):
-    with patch.object(engine, "__exit__") as mock_exit:
-        engine._is_open = False
-        engine.open()
-        mock_exit.assert_not_called()
-
-        engine._is_open = True
-        engine.close()
-        mock_exit.assert_called_once()
-
-
-def test_engine___enter__(engine):
-    with patch.object(engine._rust_dataflow, "__enter__") as mock_enter:
-        engine._is_open = True
-        engine.__enter__()
-        mock_enter.assert_not_called()
-        assert engine._is_open is True
-
-        engine._is_open = False
-        engine.__enter__()
-        mock_enter.assert_called_once()
-        assert engine._is_open is True
-
-
-def test_engine___exit__(engine):
-    with patch.object(engine._rust_dataflow, "__exit__") as mock_exit:
-        engine._is_open = False
-        engine.__exit__(None, None, None)
-        mock_exit.assert_not_called()
-
-        assert engine._is_open is False
-
-        engine._is_open = True
-        engine.__exit__(None, None, None)
-        mock_exit.assert_called_once()
-        assert engine._is_open is False
+    instance = Engine(config=config)
+    instance._config = config
+    instance._rust_dataflow = MagicMock()
+    instance._run_python_server_in_background = AsyncMock()
+    instance._run_rust_server_in_background = MagicMock()
+    return instance
 
 
 def test_engine_save_to_csv(engine):
