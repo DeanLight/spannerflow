@@ -55,6 +55,13 @@ fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool 
             dataflow::DataType::Unspecified => {
                 return false;
             }
+            dataflow::DataType::Span => {
+                // TODO: Implement Span validation
+                return false;
+            }
+            dataflow::DataType::Custom => {
+                return true;
+            }
         }
     }
     true
