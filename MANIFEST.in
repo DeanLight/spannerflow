@@ -2,8 +2,8 @@ include settings.ini
 include LICENSE
 include CONTRIBUTING.md
 include README.md
-include spannerflow/Cargo.toml
 recursive-include spannerflow/templates *
-recursive-include spannerflow/src *
+recursive-include spannerflow/rust_server *
+recursive-include spannerflow/rust_lib *
 recursive-exclude * __pycache__
 prune tests

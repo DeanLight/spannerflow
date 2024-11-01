@@ -12,10 +12,12 @@ import networkx as nx
 
 # %% ../nbs/30_graph_utils.ipynb 4
 def find_sources(graph: nx.DiGraph) -> list[str | int]:
+    """Returns the sources of the graph, i.e. the nodes with no incoming edges"""
     return [node for node in graph.nodes() if graph.in_degree(node) == 0]
 
 
 def find_output(graph: nx.DiGraph) -> str | int:
+    """Returns the output node of the graph, i.e. the node with no outgoing edges"""
     outputs = [node for node in graph.nodes() if graph.out_degree(node) == 0]
     if len(outputs) != 1:
         raise Exception("There can only be one output node to the graph")
@@ -23,6 +25,7 @@ def find_output(graph: nx.DiGraph) -> str | int:
 
 
 def change_node_key(graph: nx.DiGraph, old_key: str | int, new_key: str | int) -> None:
+    """Changes the key of a node in a graph - used to change anchor nodes names."""
     # Add a new node with the new key, and copy the attributes of the old node
     graph.add_node(new_key, **graph.nodes[old_key])
 
@@ -40,6 +43,7 @@ def change_node_key(graph: nx.DiGraph, old_key: str | int, new_key: str | int) -
 
 
 def get_cycles(graph: nx.DiGraph) -> dict[str | int, nx.DiGraph]:
+    """Returns a dictionary of cycles in the graph, with the anchor node as the key"""
     cycles = nx.recursive_simple_cycles(graph)
     cycle_dicts = dict()
 
@@ -51,6 +55,7 @@ def get_cycles(graph: nx.DiGraph) -> dict[str | int, nx.DiGraph]:
 
 
 def find_anchor_of_cycle(graph: nx.DiGraph, cycle: nx.DiGraph) -> str | int:
+    """Returns the anchor node of a cycle, the node with the union operation"""
     egress_node = find_egress_node(graph, cycle)
     for node in cycle:
         if node == egress_node and graph.nodes[node]["op"] == "union":
@@ -81,6 +86,7 @@ def reduced_graph(graph: nx.DiGraph) -> tuple[nx.DiGraph, dict[str | int, nx.DiG
 
 
 def get_node_schema(graph: nx.DiGraph, node: str | int) -> str:
+    """Returns the schema of a node in the graph - string representation of the columns"""
     schema = graph.nodes[node]["schema"]
     if len(schema) != 1:
         return f"({', '.join(schema)})"
@@ -88,10 +94,12 @@ def get_node_schema(graph: nx.DiGraph, node: str | int) -> str:
 
 
 def get_common_cols(graph: nx.DiGraph, node1: int | str, node2: int | str) -> list[str]:
+    """Returns the common columns between two nodes"""
     return list(set(graph.nodes[node1]["schema"]) & set(graph.nodes[node2]["schema"]))
 
 
 def get_minus_cols(graph: nx.DiGraph, node1: str | int, common_cols) -> list[str]:
+    """Returns the columns that are in node1 but not in the common_cols"""
     return list(set(graph.nodes[node1]["schema"]) - set(common_cols))
 
 
@@ -132,6 +140,7 @@ def find_egress_node(graph: nx.DiGraph, cycle) -> str | int:
 def create_iter_graph(
     graph: nx.DiGraph, cycle: nx.DiGraph, anchor: str | int
 ) -> nx.DiGraph:
+    """Creates a graph for iterating over a cycle containig the cycle and the ingress nodes"""
     ingress = find_ingress_nodes(graph, cycle)
     iter_graph = graph.subgraph(list(cycle.nodes) + ingress + [anchor]).copy()
     change_node_key(iter_graph, anchor, f"iter_{anchor}")

@@ -108,6 +108,9 @@ class RustDataflow:
         in_iterate: bool = False,
         nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
+        """Returns a string of rust code for joining two collections on the common columns.
+        If no columns are common, the join is a cross product.
+        """
         join1, join2 = list(graph.pred[node])
         out_node_str = self.get_node_str(node)
         join1_str = self.get_node_str(join1)
@@ -150,6 +153,7 @@ class RustDataflow:
         in_iterate: bool = False,
         nodes_schema_types_dict: dict[str | int, list[str]] | None = None,
     ) -> str:
+        """Returns a string of rust code for unioning two collections."""
         preds = [
             pred
             for pred in graph.pred[node]
@@ -176,6 +180,7 @@ class RustDataflow:
         return f"node_{node}"
 
     def validate_node(self, graph: nx.DiGraph, node: str | int) -> None:
+        """Validates the node in the graph."""
         gr_node = graph.nodes[node]
         preds = [graph.nodes[key] for key in graph.pred[node].keys()]
         match gr_node["op"]:
@@ -220,6 +225,7 @@ class RustDataflow:
         node: str | int,
         nodes_schema_types_dict: dict[str | int, list[str]],
     ) -> None:
+        """Prepares the node in the graph, calculating and updating the schema types dictionary."""
         gr_node = graph.nodes[node]
         preds = [
             {**graph.nodes[node_name], "node_name": node_name}
@@ -302,6 +308,7 @@ class RustDataflow:
         anchor: str | int | None = None,
         in_iterate: bool = False,
     ) -> str:
+        """Returns a string of rust code for the node in the graph."""
         gr_node = graph.nodes[node]
         self.validate_node(graph, node)
         self.prepare_node(graph, node, nodes_schema_types_dict)
@@ -335,16 +342,50 @@ class RustDataflow:
         in_iterate: bool = False,
         nodes_schema_types_dict: dict[str | int, list[str]] = {},
     ) -> str:
+        """Returns a string of rust code for ie_map node in the graph."""
         prev_nodes = list(graph.pred[node])
         node_str = self.get_node_str(node, anchor=anchor, in_iterate=in_iterate)
         prev_node_str = self.get_node_str(
             prev_nodes[0], anchor=anchor, in_iterate=in_iterate
         )
-        match graph.nodes[node]["name"]:
+        # STD_IE_FUNCTIONS = {
+        #     "rgx": {
+        #         ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_str_span",
+        #         ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_span_span",
+        #     },
+        #     "as_str": {("DATA_TYPE_SPAN"): "span_as_str"},
+        #     "deconstruct_span": {("DATA_TYPE_SPAN"): "deconstruct_span"},
+        #     "rgx_is_match": {
+        #         ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_is_match_str",
+        #         ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_is_match_span",
+        #     },
+        #     "span_contained": {("DATA_TYPE_SPAN", "DATA_TYPE_SPAN"): "span_contained"},
+        #     "rgx_split": {
+        #         ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_split_str",
+        #         ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_split_span",
+        #     },
+        # }
+
+        gr_node = graph.nodes[node]
+        in_schema = gr_node["schema"][: gr_node["in_arity"]]
+        out_schema = gr_node["schema"][gr_node["in_arity"] :]
+        match gr_node["name"]:
+            case "rgx" as func_name:
+                code = f"let {node_str} = {prev_node_str}.flat_map(|{self.get_col_schema(in_schema)}| {{ \n \
+                    {func_name}({', '.join([f'&{col}' for col in in_schema])}).map(move |vec| ({', '.join([f'{col}.clone()' for col in in_schema]+[f'vec[{i}].clone()' for i in gr_node["out_arity"]])})) \n \
+                }});"
+            case (
+                "as_str"
+                | "rgx_split"
+                | "rgx_is_match"
+                | "deconstruct_span"
+                | "span_contained" as func_name
+            ):
+                code = f"let {node_str} = {prev_node_str}.flat_map(|{self.get_col_schema(in_schema)}| {{ \n \
+                    {func_name}({', '.join([f'&{col}' for col in in_schema])}).map(move |{self.get_col_schema(out_schema)}| ({', '.join([f'{col}.clone()' for col in in_schema]+out_schema)})) \n \
+                }});"
+
             case "not":
-                prev_node_str = self.get_node_str(
-                    prev_nodes[0], anchor=anchor, in_iterate=in_iterate
-                )
                 code = f"let {node_str} = {prev_node_str}.map(|{get_node_schema(graph, prev_nodes[0])}| ({get_node_schema(graph, prev_nodes[0])}, !{get_node_schema(graph, prev_nodes[0])}));"
             case _:
                 ie_map_template = self._template_env.get_template("ie_map.rs.jinja2")
@@ -354,12 +395,10 @@ class RustDataflow:
                     grpc_address=f"http://{self._config.LISTEN_ADDRESS}",
                     function_name=graph.nodes[node]["name"],
                     in_schema=self.get_col_schema(
-                        graph.nodes[node]["schema"][
-                            : len(graph.nodes[node]["in_schema"])
-                        ]
+                        gr_node["schema"][: len(gr_node["in_schema"])]
                     ),
-                    out_schema_len=len(graph.nodes[node]["out_schema"]),
-                    in_schema_len=len(graph.nodes[node]["in_schema"]),
+                    out_schema_len=len(gr_node["out_schema"]),
+                    in_schema_len=len(gr_node["in_schema"]),
                     out_schema_types=nodes_schema_types_dict[node],
                     DATAFLOW_TO_RUST_TYPES=self.DATAFLOW_TO_RUST_TYPES,
                 )
@@ -602,24 +641,8 @@ class RustDataflow:
                 )
         return flow_code
 
-    def create_cargo_toml(self, timestamp: str) -> None:
-        dest_path = self._config.GENERATED_RUST_PROJECT_PATH / self._cargo_file_name
-        template = self._template_env.get_template(
-            self._config.CARGO_TOML_TEMPLATE_NAME
-        )
-
-        output_text = template.render(
-            project_name=f"{self._config.RUST_PROJECT_NAME}{self._query_id}",
-            rust_file_name=f"{timestamp}.rs",
-            dependencies=self._config.RUST_DEPENDENCIES,
-            build_dependencies=self._config.RUST_BUILD_DEPEDENCIES,
-        )
-
-        with open(dest_path, "w") as f:
-            f.write(output_text)
-
     def create_rust_file(self, timestamp: str, graph: nx.DiGraph) -> None:
-        dest_path = self._config.GENERATED_RUST_PROJECT_PATH / "src" / f"{timestamp}.rs"
+        dest_path = self._config.GENERATED_RUST_PROJECT_PATH / f"{timestamp}.rs"
         template = self._template_env.get_template(self._config.RUST_FILE_TEMPLATE_NAME)
         nodes_schema_types_dict: dict[str | int, list[str]] = dict()
         flow_code = self.generate_graph_code(graph, nodes_schema_types_dict)
@@ -633,24 +656,14 @@ class RustDataflow:
             output_node_str=self.get_node_str(output_node),
             output_vars_count=len(graph.nodes[output_node]["schema"]),
         )
-
+        self._config.RUST_SERVER_LIB_SRC_FILE_PATH.unlink(missing_ok=True)
         with open(dest_path, "w") as f:
+            f.write(output_text)
+
+        with open(self._config.RUST_SERVER_LIB_SRC_FILE_PATH, "w") as f:
             f.write(output_text)
 
         graph.graph["nodes_schema_types_dict"] = nodes_schema_types_dict
-
-    def create_rust_build_file(self) -> None:
-        dest_path = self._config.GENERATED_RUST_PROJECT_PATH / "build.rs"
-        template = self._template_env.get_template(
-            self._config.RUST_BUILD_TEMPLATE_NAME
-        )
-
-        output_text = template.render(
-            proto_dir_path=self._config.PROTO_DIR_PATH,
-            proto_file_path=self._config.PROTO_FILE_PATH,
-        )
-        with open(dest_path, "w") as f:
-            f.write(output_text)
 
     def build_so(self, graph: nx.DiGraph) -> tuple[Path, str]:
         self._config.GENERATED_RUST_PROJECT_PATH.joinpath("src").mkdir(
@@ -658,9 +671,7 @@ class RustDataflow:
         )
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self._query_id += 1
-        self.create_cargo_toml(timestamp)
         self.create_rust_file(timestamp, graph)
-        self.create_rust_build_file()
         self.build_rust(
             self._config.GENERATED_RUST_PROJECT_PATH.joinpath(
                 self._cargo_file_name
@@ -668,7 +679,7 @@ class RustDataflow:
             self._config.RUST_SO_BUILD_LOG_PATH,
         )
         # Determine file extension based on the platform
-        crate_name = f"{self._config.RUST_PROJECT_NAME}{self._query_id}"
+        crate_name = "spannerflow"
         if os.name == "posix":  # Linux/macOS
             if os.uname().sysname == "Darwin":
                 extension = ".dylib"  # macOS

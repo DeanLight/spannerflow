@@ -178,12 +178,12 @@ Cargo.lock
 
 
 # Added by cargo
-
 /target
 generated_rust
 .DS_Store
 spannerflow/logs
-spannerflow/rust_server
+spannerflow/rust_grpc_server
+spannerflow/rust_lib/src/latest.rs
 protoc/
 rust/
 .vscode/

@@ -6,7 +6,7 @@
 __all__ = ['Config']
 
 # %% ../nbs/00_config.ipynb 2
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 # %% ../nbs/00_config.ipynb 6
@@ -18,37 +18,12 @@ class Config:
     DATAFLOW_IP: str = "localhost"
     PACKAGE_ROOT = Path(__file__).parent
     GENERATED_RUST_PROJECT_PATH: Path = PACKAGE_ROOT.joinpath("generated_rust")
-    RUST_SERVER_PATH: Path = PACKAGE_ROOT.joinpath("rust_server")
+    RUST_SERVER_LIB_SRC_FILE_PATH: Path = PACKAGE_ROOT.joinpath(
+        "rust_lib", "src", "latest.rs"
+    )
+    RUST_SERVER_PATH: Path = PACKAGE_ROOT.joinpath("rust_grpc_server")
     TEMPLATES_PATH: Path = PACKAGE_ROOT.joinpath("templates")
-    CARGO_TOML_TEMPLATE_NAME: str = "Cargo.toml.jinja2"
     RUST_FILE_TEMPLATE_NAME: str = "rust_dataflow.rs.jinja2"
-    RUST_BUILD_TEMPLATE_NAME: str = "build.rs.jinja2"
-    RUST_PROJECT_NAME: str = "spannerflow"
-    RUST_DEPENDENCIES: list[dict[str, str]] = field(
-        default_factory=lambda: [
-            {
-                "name": "timely",
-                "json": '{ git = "https://github.com/TimelyDataflow/timely-dataflow" }',
-            },
-            {
-                "name": "differential-dataflow",
-                "json": '{ git = "https://github.com/TimelyDataflow/differential-dataflow" }',
-            },
-            {"name": "prost", "version": "0.13.3"},
-            {"name": "prost-types", "version": "0.13.3"},
-            {"name": "tonic", "version": "0.12.3"},
-            {"name": "ordered-float", "version": "4.4.0"},
-            {"name": "tokio", "json": '{ version = "1.40.0", features = ["full"] }'},
-            {"name": "futures", "version": "0.3.31"},
-        ]
-    )
-    RUST_BUILD_DEPEDENCIES: list[dict[str, str]] = field(
-        default_factory=lambda: [
-            {"name": "tonic-build", "version": "0.12.3"},
-        ]
-    )
-    PROTO_DIR_PATH: Path = Path(__file__).parent.joinpath("proto").absolute()
-    PROTO_FILE_PATH: Path = PROTO_DIR_PATH.joinpath("dataflow", "v1", "dataflow.proto")
     LOGS_DIR: Path = Path(__file__).parent.joinpath("logs")
     RUST_SERVER_LOG_PATH: Path = LOGS_DIR.joinpath("rust_server.log")
     RUST_SERVER_BUILD_LOG_PATH: Path = LOGS_DIR.joinpath("rust_server_build.log")

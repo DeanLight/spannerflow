@@ -90,8 +90,8 @@ setuptools.setup(
     zip_safe=False,
     rust_extensions=[
         RustExtension(
-            "spannerflow.rust_server",
-            "spannerflow/Cargo.toml",
+            "spannerflow.rust_grpc_server",
+            "spannerflow/rust_server/Cargo.toml",
             features=[],
             binding=Binding.Exec,
         )
