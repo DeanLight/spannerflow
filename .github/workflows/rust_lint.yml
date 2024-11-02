@@ -20,4 +20,4 @@ jobs:
 
       - name: Rust Lint
         run: cargo marker check
-        working-directory: ./spannerflow
+        working-directory: ./spannerflow/rust_server
