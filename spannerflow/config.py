@@ -18,8 +18,9 @@ class Config:
     DATAFLOW_IP: str = "localhost"
     PACKAGE_ROOT = Path(__file__).parent
     GENERATED_RUST_PROJECT_PATH: Path = PACKAGE_ROOT.joinpath("generated_rust")
-    RUST_SERVER_LIB_SRC_FILE_PATH: Path = PACKAGE_ROOT.joinpath(
-        "rust_lib", "src", "latest.rs"
+    RUST_SERVER_LIB_DIR_PATH: Path = PACKAGE_ROOT.joinpath("rust_lib")
+    RUST_SERVER_LIB_SRC_FILE_PATH: Path = RUST_SERVER_LIB_DIR_PATH.joinpath(
+        "src", "latest.rs"
     )
     RUST_SERVER_PATH: Path = PACKAGE_ROOT.joinpath("rust_grpc_server")
     TEMPLATES_PATH: Path = PACKAGE_ROOT.joinpath("templates")

@@ -8,6 +8,7 @@ __all__ = ['Engine']
 # %% ../nbs/60_engine.ipynb 2
 import math
 import os
+import re
 import socket
 import subprocess
 import threading
@@ -26,6 +27,7 @@ from .config import Config
 from .dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
 from .graph_utils import find_output
 from .grpc_server import IEFunctionService
+from .span import Span
 
 # %% ../nbs/60_engine.ipynb 4
 class Engine:
@@ -246,6 +248,17 @@ class Engine:
         del self._ie_functions[name]
 
     @staticmethod
+    def _deserialize_span(span_str: str) -> Span:
+        SPAN_PATTERN = (
+            r"^\[@(?P<doc_id>.*),(?P<start>\d+),(?P<end>\d+)\) \"(?P<text>.*)\"$"
+        )
+        matches = re.match(SPAN_PATTERN, span_str)
+        if matches is None:
+            raise ValueError(f"Invalid span string: {span_str}")
+        res = matches.groupdict()
+        return Span(res["text"], int(res["start"]), int(res["end"]), res["doc_id"])
+
+    @staticmethod
     def _deserialize_row(schema: list[str], row: list[str]) -> list[Any]:
         new_row: list[Any] = list()
         for col_type, value in zip(schema, row):
@@ -262,6 +275,9 @@ class Engine:
                     if value not in ["true", "false"]:
                         raise ValueError(f"Expected bool, got {value}")
                     new_row.append(value.lower() == "true")
+                case dataflow_pb2.DataType.DATA_TYPE_SPAN:  # type: ignore
+                    new_row.append(Engine._deserialize_span(value))
+
                 case _:
                     raise ValueError(f"Unknown data type: {col_type}")
         return new_row
@@ -289,8 +305,14 @@ class Engine:
                     if not isinstance(value, bool):
                         raise ValueError(f"Expected bool, got {type(value)}")
                     new_row.append(str(value).lower())
+                case dataflow_pb2.DataType.DATA_TYPE_SPAN:  # type: ignore
+                    if not isinstance(value, Span):
+                        raise ValueError(f"Expected Span, got {type(value)}")
+                    new_row.append(repr(value))
+
                 case _:
                     raise ValueError(f"Unknown data type: {col_type}")
+
         return new_row
 
     @ensure_server_running

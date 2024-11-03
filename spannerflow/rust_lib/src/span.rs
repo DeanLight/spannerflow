@@ -92,13 +92,13 @@ impl Span {
 
 impl std::fmt::Debug for Span{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[@{},{},{}) \"{}\"]", self.name, self.start, self.end, &self.doc[self.start..self.end])
+        write!(f, "[@{},{},{}) \"{}\"", self.name, self.start, self.end, &self.doc[self.start..self.end])
     }
 }
 
 impl std::fmt::Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[@{},{},{}) \"{}\"]", self.name, self.start, self.end, &self.doc[self.start..self.end])
+        write!(f, "[@{},{},{}) \"{}\"", self.name, self.start, self.end, &self.doc[self.start..self.end])
     }
 }
 

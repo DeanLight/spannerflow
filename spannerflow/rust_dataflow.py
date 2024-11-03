@@ -673,7 +673,7 @@ class RustDataflow:
         self._query_id += 1
         self.create_rust_file(timestamp, graph)
         self.build_rust(
-            self._config.GENERATED_RUST_PROJECT_PATH.joinpath(
+            self._config.RUST_SERVER_LIB_DIR_PATH.joinpath(
                 self._cargo_file_name
             ).absolute(),
             self._config.RUST_SO_BUILD_LOG_PATH,
@@ -692,7 +692,7 @@ class RustDataflow:
         else:
             raise RuntimeError("Unsupported OS")
         return (
-            self._config.GENERATED_RUST_PROJECT_PATH.joinpath(
+            self._config.RUST_SERVER_LIB_DIR_PATH.joinpath(
                 "target", "release", lib_filename
             ),
             f"query_{self._query_id}",
