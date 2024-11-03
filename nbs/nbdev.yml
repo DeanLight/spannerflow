@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "spannerflow"
+  site-url: "https://DeanLight.github.io/spannerflow"
+  description: ""
+  repo-branch: main
+  repo-url: "https://github.com/DeanLight/spannerflow"
