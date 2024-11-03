@@ -96,15 +96,20 @@ if “op” is “ie_map” it have to include:
 - “out_arity” which is a number
 - “in_arity” which is a number
 
-if “op” is “get_const” \* “const_dict” which is a dictinary with column
-as a key (appears in “schema”) and a const as a value.
+if “op” is “get_const”
 
-if “op” is “groupby” it have to include: \* “agg” which is a list of
-strings or None in length of schema which indicates what and if to apply
-aggregation function on the column in this position
+- “const_dict” which is a dictinary with column as a key (appears in
+  “schema”) and a const as a value.
 
-if “op” is “select” it have to include: \* “theta” which is Theta object
-that indicates what selection to do
+if “op” is “groupby” it have to include:
+
+- “agg” which is a list of strings or None in length of schema which
+  indicates what and if to apply aggregation function on the column in
+  this position
+
+if “op” is “select” it have to include:
+
+- “theta” which is Theta object that indicates what selection to do
 
 ## Getting started
 
