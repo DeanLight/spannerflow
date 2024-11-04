@@ -23,6 +23,15 @@ pub mod dataflow {
     tonic::include_proto!("dataflow.v1");
 }
 
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+
+mod span;
+mod std_ie_functions;
+use span::*;
+use std_ie_functions::*;
+
 macro_rules! tuple_to_vec_string {
     // Base case: empty tuple
     () => {
@@ -107,7 +116,7 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
                     input_{{value['name']}}.insert(({% for element in value['schema'] %} vec[{{loop.index0}}].parse::<{{element}}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
                 }
             {% elif value["op"] == "get_const" %}
-                input_{{value['name']}}.insert(({% for element in value['consts'] %} "{{ element }}".parse::<{{ value['schema'][loop.index0] }}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
+                input_{{value['name']}}.insert(({% for element in value['consts'] %}{% if value['schema'][loop.index0] == "String"%}{{ element | tojson }}{%else%}"{{ element }}"{% endif %}.parse::<{{ value['schema'][loop.index0] }}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
             {% endif %}
             {% endfor %}
         });

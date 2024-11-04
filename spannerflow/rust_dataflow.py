@@ -27,6 +27,7 @@ from spannerflow.graph_utils import (
     reduced_graph,
     traverse_cycle,
 )
+from .span import Span
 
 # %% ../nbs/50_rust_dataflow.ipynb 4
 class RustDataflow:
@@ -43,6 +44,7 @@ class RustDataflow:
         float: "DATA_TYPE_FLOAT",
         bool: "DATA_TYPE_BOOL",
         object: "DATA_TYPE_STRING",
+        Span: "DATA_TYPE_SPAN",
     }
 
     def __init__(self, engine: Engine, config: Config):
@@ -286,17 +288,26 @@ class RustDataflow:
                     gr_node["in_schema"] = gr_node["in_schema"](gr_node["in_arity"])
                 if callable(gr_node["out_schema"]):
                     gr_node["out_schema"] = gr_node["out_schema"](gr_node["out_arity"])
-                nodes_schema_types_dict[node] = [
-                    (
-                        self.PYTHON_TO_DATAFLOW_TYPES[t]
-                        # TODO Support multiple types
-                        if not isinstance(t, tuple)
-                        else list(
-                            filter(lambda x: x in self.PYTHON_TO_DATAFLOW_TYPES, t)
-                        )[0]
-                    )
-                    for t in gr_node["in_schema"] + gr_node["out_schema"]
-                ]
+
+                nodes_schema_types_dict[node] = []
+                for i, col_type in enumerate(
+                    gr_node["in_schema"] + gr_node["out_schema"]
+                ):
+                    if i < gr_node["in_arity"]:
+                        prev_type = nodes_schema_types_dict[preds[0]["node_name"]][i]
+                        if isinstance(col_type, tuple):
+                            tuple_types = (
+                                self.PYTHON_TO_DATAFLOW_TYPES[t] for t in col_type
+                            )
+                            if prev_type not in tuple_types:
+                                raise ValueError(
+                                    "Type mismatch: the IE function input type does not match the input schema"
+                                )
+                        new_col_type = prev_type
+                    else:
+                        new_col_type = self.PYTHON_TO_DATAFLOW_TYPES[col_type]
+                    nodes_schema_types_dict[node].append(new_col_type)
+
             case _:
                 raise ValueError(f"Unsupported operation: {gr_node['op']}")
 
@@ -348,39 +359,43 @@ class RustDataflow:
         prev_node_str = self.get_node_str(
             prev_nodes[0], anchor=anchor, in_iterate=in_iterate
         )
-        # STD_IE_FUNCTIONS = {
-        #     "rgx": {
-        #         ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_str_span",
-        #         ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_span_span",
-        #     },
-        #     "as_str": {("DATA_TYPE_SPAN"): "span_as_str"},
-        #     "deconstruct_span": {("DATA_TYPE_SPAN"): "deconstruct_span"},
-        #     "rgx_is_match": {
-        #         ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_is_match_str",
-        #         ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_is_match_span",
-        #     },
-        #     "span_contained": {("DATA_TYPE_SPAN", "DATA_TYPE_SPAN"): "span_contained"},
-        #     "rgx_split": {
-        #         ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_split_str",
-        #         ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_split_span",
-        #     },
-        # }
+        STD_IE_FUNCTIONS: dict[str, dict[tuple, str]] = {
+            "rgx": {
+                ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_str_span",
+                ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_span_span",
+            },
+            "as_str": {("DATA_TYPE_SPAN",): "span_as_str"},
+            "deconstruct_span": {("DATA_TYPE_SPAN",): "deconstruct_span"},
+            "rgx_is_match": {
+                ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_is_match_str",
+                ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_is_match_span",
+            },
+            "span_contained": {("DATA_TYPE_SPAN", "DATA_TYPE_SPAN"): "span_contained"},
+            "rgx_split": {
+                ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_split_str",
+                ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_split_span",
+            },
+        }
 
-        gr_node = graph.nodes[node]
-        in_schema = gr_node["schema"][: gr_node["in_arity"]]
-        out_schema = gr_node["schema"][gr_node["in_arity"] :]
+        gr_node: dict = graph.nodes[node]
+        in_arity: int = gr_node["in_arity"]
+        in_schema = gr_node["schema"][:in_arity]
+        in_type_schema: list = nodes_schema_types_dict[node][:in_arity]
+        out_schema = gr_node["schema"][in_arity:]
         match gr_node["name"]:
-            case "rgx" as func_name:
+            case "rgx":
+                func_name = STD_IE_FUNCTIONS["rgx"][tuple(in_type_schema)]
                 code = f"let {node_str} = {prev_node_str}.flat_map(|{self.get_col_schema(in_schema)}| {{ \n \
-                    {func_name}({', '.join([f'&{col}' for col in in_schema])}).map(move |vec| ({', '.join([f'{col}.clone()' for col in in_schema]+[f'vec[{i}].clone()' for i in gr_node["out_arity"]])})) \n \
+                    {func_name}({', '.join([f'&{col}' for col in in_schema])}).map(move |vec| ({', '.join([f'{col}.clone()' for col in in_schema]+[f'vec[{i}].clone()' for i in range(gr_node["out_arity"])])})) \n \
                 }});"
             case (
                 "as_str"
                 | "rgx_split"
                 | "rgx_is_match"
                 | "deconstruct_span"
-                | "span_contained" as func_name
+                | "span_contained" as original_func_name
             ):
+                func_name = STD_IE_FUNCTIONS[original_func_name][tuple(in_type_schema)]
                 code = f"let {node_str} = {prev_node_str}.flat_map(|{self.get_col_schema(in_schema)}| {{ \n \
                     {func_name}({', '.join([f'&{col}' for col in in_schema])}).map(move |{self.get_col_schema(out_schema)}| ({', '.join([f'{col}.clone()' for col in in_schema]+out_schema)})) \n \
                 }});"
