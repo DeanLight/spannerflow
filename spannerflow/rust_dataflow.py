@@ -488,7 +488,14 @@ class RustDataflow:
         theta = gr_node["theta"]
         predicates = []
         if hasattr(theta, "pos_val_tuples"):  #  equalConstTheta
-            predicates = [f"*col_{pos} == {val}" for pos, val in theta.pos_val_tuples]
+            predicates = [
+                (
+                    f'*col_{pos} == "{val}".to_string()'
+                    if isinstance(val, str)
+                    else f"*col_{pos} == {val}"
+                )
+                for pos, val in theta.pos_val_tuples
+            ]
         elif hasattr(theta, "col_pos_tuples"):  #  equalColTheta
             predicates = [
                 f"col_{pos1} == col_{pos2}" for pos1, pos2 in theta.col_pos_tuples
