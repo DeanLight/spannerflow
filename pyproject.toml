@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-rust"]
+build-backend = "setuptools.build_meta"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+exclude = [
+    "spannerflow/dataflow/v1/dataflow_pb2.pyi",
+    "spannerflow/dataflow/v1/dataflow_pb2.py",
+    "spannerflow/dataflow/v1/dataflow_pb2_grpc.py",
+    "spannerflow/setup.py",
+    "spannerflow/_modidx.py"
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+addopts = "-vv --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=./spannerflow"
+
+[tool.coverage.report]
+omit = [
+    "spannerflow/dataflow/v1/dataflow_pb2.py",
+    "spannerflow/dataflow/v1/dataflow_pb2_grpc.py",
+    "spannerflow/dataflow/v1/dataflow_pb2.pyi",
+    "spannerflow/setup.py",
+    "spannerflow/_modidx.py"
+]
