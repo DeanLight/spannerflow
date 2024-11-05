@@ -1,0 +1,23 @@
+name: rust_lint
+
+on: [pull_request]
+
+jobs:
+  rust_lint:
+    name: rust lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetching base branch
+        run: |
+            git fetch -u origin ${{ github.head_ref }}:${{ github.head_ref }}
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+
+      - uses: rust-marker/marker@v0.5
+        with:
+          install-only: true
+
+      - name: Rust Lint
+        run: cargo marker check
+        working-directory: ./spannerflow/rust_server
