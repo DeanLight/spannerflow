@@ -159,17 +159,23 @@ def get_join_code(
             join2_str = join2
     common_cols = get_common_cols(graph, join1, join2)
     common_schema = get_col_schema(common_cols)
+
     join1_uncommon_schema = get_col_schema(get_minus_cols(graph, join1, common_cols))
-    join2_uncommon_schema = get_col_schema(get_minus_cols(graph, join2, common_cols))
+    join1_schema = get_node_schema(graph, join1)
     out_join1_uncommon_schema = (
         join1_uncommon_schema if join1_uncommon_schema != "0" else "_"
     )
+
+    join2_uncommon_schema = get_col_schema(get_minus_cols(graph, join2, common_cols))
+    join2_schema = get_node_schema(graph, join2)
     out_join2_uncommon_schema = (
         join2_uncommon_schema if join2_uncommon_schema != "0" else "_"
     )
-    return f"""let {out_node_str} = {join1_str}.map(|{get_node_schema(graph, join1)}| ({common_schema}, {join1_uncommon_schema}))
-                        .join(&{join2_str}.map(|{get_node_schema(graph, join2)}| ({common_schema}, {join2_uncommon_schema})))
-                        .map(|({common_schema if common_schema != "0" else "_"}, ({out_join1_uncommon_schema}, {out_join2_uncommon_schema}))| ({get_node_schema(graph, node)}));"""
+
+    node_out_schema = get_node_schema(graph, node)
+    return f"""let {out_node_str} = {join1_str}.map(|{join1_schema}| ({common_schema}, {join1_uncommon_schema}))
+                        .join(&{join2_str}.map(|{join2_schema}| ({common_schema}, {join2_uncommon_schema})))
+                        .map(|({common_schema if common_schema != "0" else "_"}, ({out_join1_uncommon_schema}, {out_join2_uncommon_schema}))| ({node_out_schema}));"""
 
 # %% ../nbs/50_rust_dataflow.ipynb 7
 def get_union_code(
