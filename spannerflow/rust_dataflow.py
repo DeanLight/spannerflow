@@ -4,9 +4,10 @@
 
 # %% auto 0
 __all__ = ['DATAFLOW_TO_RUST_TYPES', 'PYTHON_TO_DATAFLOW_TYPES', 'STD_IE_FUNCTIONS', 'get_sources_data', 'get_col_schema',
-           'get_node_str', 'update_repeatable_cols_in_schema', 'get_join_code', 'get_union_code', 'get_project_code',
-           'get_from_input_code', 'get_rename_code', 'get_select_code', 'get_groupby_code', 'get_ie_map_code',
-           'validate_node', 'prepare_node', 'generate_node_code', 'generate_graph_code', 'RustDataflow']
+           'get_node_str', 'get_repeatable_cols_in_schema', 'update_repeatable_cols_in_schema', 'get_join_code',
+           'get_union_code', 'get_project_code', 'get_from_input_code', 'get_rename_code', 'get_select_code',
+           'get_groupby_code', 'get_ie_map_code', 'validate_node', 'prepare_node', 'generate_node_code',
+           'generate_graph_code', 'RustDataflow']
 
 # %% ../nbs/50_rust_dataflow.ipynb 2
 import os
@@ -117,22 +118,31 @@ def get_node_str(
     return f"node_{node}"
 
 
-def update_repeatable_cols_in_schema(schema: list[str]) -> list[str]:
-    """Update the schema to include the index of the repeated columns"""
+def get_repeatable_cols_in_schema(schema: list[str]) -> dict[str, list[int]]:
+    """Return a dictionary of the repeated columns in the schema"""
     repeatable_cols: dict[str, list[int]] = {}
     for i, col in enumerate(schema):
         if col in repeatable_cols:
             repeatable_cols[col].append(i)
         else:
             repeatable_cols[col] = [i]
+    repeatable_cols = {
+        col: idxs for col, idxs in repeatable_cols.items() if len(idxs) > 1
+    }
+    return repeatable_cols
+
+
+def update_repeatable_cols_in_schema(schema: list[str]) -> list[str]:
+    """Update the schema to include the index of the repeated columns"""
+    repeatable_cols = get_repeatable_cols_in_schema(schema)
 
     if not repeatable_cols:
         return schema
+
     result = schema.copy()
     for col, indecies in repeatable_cols.items():
-        if len(indecies) > 1:
-            for i, index in enumerate(indecies):
-                result[index] = f"{col}_{i}"
+        for i, index in enumerate(indecies):
+            result[index] = f"{col}_{i}"
     return result
 
 # %% ../nbs/50_rust_dataflow.ipynb 6
@@ -206,13 +216,24 @@ def get_project_code(
     anchor: str | int | None = None,
     in_iterate: bool = False,
 ) -> str:
-    schema = get_node_schema(graph, node)
     prev_nodes = list(graph.pred[node])
     prev_node_str = get_node_str(prev_nodes[0], anchor=anchor, in_iterate=in_iterate)
     node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
     prev_schema = get_node_schema(graph, prev_nodes[0])
 
-    return f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {schema});"
+    col_names = graph.nodes[node]["schema"].copy()
+    repeatable_cols = get_repeatable_cols_in_schema(graph.nodes[node]["schema"])
+
+    for col_idx in repeatable_cols.values():
+        if (
+            code_metadata["nodes_schema_types_dict"][node][col_idx[0]]
+            != "DATA_TYPE_STRING"
+        ):
+            continue
+        for idx in col_idx:
+            col_names[idx] = f"{col_names[idx]}.clone()"
+
+    return f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {get_col_schema(col_names)});"
 
 # %% ../nbs/50_rust_dataflow.ipynb 9
 def get_from_input_code(
@@ -319,7 +340,7 @@ def get_groupby_code(
         match agg_func["agg_func"]:
             case "sum":
                 declares.append(f"let mut {agg_var}: i32 = 0;")
-                agg_code.append(f"{agg_var} += {val} * (*cnt as i32);")
+                agg_code.append(f"{agg_var} += *{val} * (*cnt as i32);")
             case "count":
                 declares.append(f"let mut {agg_var}: i32 = 0;")
                 agg_code.append(f"{agg_var} += *cnt as i32;")
@@ -331,7 +352,7 @@ def get_groupby_code(
                 agg_code.append(f"{agg_var} = std::cmp::min({agg_var}, {val});")
             case "avg":
                 declares.append(f"let mut {agg_var}: (i32, i32) = (0, 0);")
-                agg_code.append(f"{agg_var}.0 += {val} * (*cnt as i32);")
+                agg_code.append(f"{agg_var}.0 += *{val} * (*cnt as i32);")
                 agg_code.append(f"{agg_var}.1 += *cnt as i32;")
             case _:
                 raise ValueError(
