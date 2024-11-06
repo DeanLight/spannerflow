@@ -171,13 +171,17 @@ def get_join_code(
     common_schema = get_col_schema(common_cols)
 
     join1_uncommon_schema = get_col_schema(get_minus_cols(graph, join1, common_cols))
-    join1_schema = get_node_schema(graph, join1)
+    join1_schema = (
+        get_node_schema(graph, join1) if graph.nodes[join1]["schema"] else "_"
+    )
     out_join1_uncommon_schema = (
         join1_uncommon_schema if join1_uncommon_schema != "0" else "_"
     )
 
     join2_uncommon_schema = get_col_schema(get_minus_cols(graph, join2, common_cols))
-    join2_schema = get_node_schema(graph, join2)
+    join2_schema = (
+        get_node_schema(graph, join2) if graph.nodes[join2]["schema"] else "_"
+    )
     out_join2_uncommon_schema = (
         join2_uncommon_schema if join2_uncommon_schema != "0" else "_"
     )
@@ -286,7 +290,11 @@ def get_select_code(
             (
                 f'*col_{pos} == "{val}".to_string()'
                 if isinstance(val, str)
-                else f"*col_{pos} == {val}"
+                else (
+                    f"*col_{pos} == {val}".lower()
+                    if isinstance(val, bool)
+                    else f"*col_{pos} == {val}"
+                )
             )
             for pos, val in theta.pos_val_tuples
         ]
