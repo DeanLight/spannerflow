@@ -20,6 +20,7 @@ from typing import Any, Callable, Generator
 
 import grpc
 import networkx as nx
+import numpy as np
 from google.protobuf import empty_pb2
 from google.protobuf.json_format import MessageToDict
 
@@ -57,6 +58,8 @@ def deserialize_row(schema: list[str], row: list[str]) -> list[Any]:
                 new_row.append(value.lower() == "true")
             case dataflow_pb2.DataType.DATA_TYPE_SPAN:  # type: ignore
                 new_row.append(deserialize_span(value))
+            case dataflow_pb2.DataType.DATA_TYPE_INT64:  # type: ignore
+                new_row.append(np.int64(value))
             case _:
                 raise ValueError(f"Unknown data type: {col_type}")
     return new_row
@@ -86,6 +89,10 @@ def serialize_row(schema: list[str], row: list[Any]) -> list[str]:
                 if not isinstance(value, Span):
                     raise ValueError(f"Expected Span, got {type(value)}")
                 new_row.append(repr(value))
+            case dataflow_pb2.DataType.DATA_TYPE_INT64:  # type: ignore
+                if not isinstance(value, (int, np.int64)):
+                    raise ValueError(f"Expected int/numpy.int64, got {type(value)}")
+                new_row.append(str(value))
             case _:
                 raise ValueError(f"Unknown data type: {col_type}")
     return new_row

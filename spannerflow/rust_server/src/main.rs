@@ -43,6 +43,11 @@ fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool 
                 }
             }
             dataflow::DataType::Int => {
+                if value.parse::<i32>().is_err() {
+                    return false;
+                }
+            }
+            dataflow::DataType::Int64 => {
                 if value.parse::<i64>().is_err() {
                     return false;
                 }

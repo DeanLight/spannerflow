@@ -17,6 +17,7 @@ from pathlib import Path
 
 import jinja2
 import networkx as nx
+import numpy as np
 
 from .config import Config
 from .engine import Engine, serialize_row
@@ -39,6 +40,7 @@ DATAFLOW_TO_RUST_TYPES = {
     "DATA_TYPE_INT": "i32",
     "DATA_TYPE_FLOAT": "OrderedFloat<f32>",
     "DATA_TYPE_BOOL": "bool",
+    "DATA_TYPE_INT64": "i64",
 }
 
 PYTHON_TO_DATAFLOW_TYPES = {
@@ -48,6 +50,7 @@ PYTHON_TO_DATAFLOW_TYPES = {
     bool: "DATA_TYPE_BOOL",
     object: "DATA_TYPE_STRING",
     Span: "DATA_TYPE_SPAN",
+    np.int64: "DATA_TYPE_INT64",
 }
 
 STD_IE_FUNCTIONS: dict[str, dict[tuple, str]] = {

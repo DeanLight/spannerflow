@@ -81,6 +81,7 @@ enum DataType {
     DATA_TYPE_BOOL = 4;
     DATA_TYPE_SPAN = 5;
     DATA_TYPE_CUSTOM = 6;
+    DATA_TYPE_INT64 = 7;
 }
 
 message AddCollectionRequest {   
