@@ -46,14 +46,18 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
                     context.set_code(grpc.StatusCode.NOT_FOUND)
                     return  # Return early after setting the error
                 func = func_tuple[1]
+                func_in_scehma = func_tuple[2]
+                func_out_schema = func_tuple[3]
 
             elif request.HasField("row"):
                 if func is None:
                     context.set_details("Function name must be provided before rows.")
                     context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                     return  # Function name must come first
-
-                rows.append([str(row) for row in request.row.row])
+                str_arguments = [str(cell) for cell in request.row.row]
+                rows.append(
+                    [func_in_scehma[i](cell) for i, cell in enumerate(str_arguments)]
+                )
 
         if function_name is None or func is None:
             context.set_details("No function name provided.")
@@ -65,6 +69,10 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
 
             for r in res:
                 response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
-                    row=[str(cell) for cell in r]
+                    row=(
+                        [str(cell) for cell in r]
+                        if len(func_out_schema) > 1
+                        else [str(r)]
+                    )
                 )
                 yield response
