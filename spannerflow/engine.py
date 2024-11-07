@@ -205,7 +205,7 @@ class Engine:
             request = dataflow_pb2.SaveToCSVRequest(  # type: ignore
                 collection_name=collection_name,
                 file_path=str(file_path),
-                delimiter=delimiter,
+                delimiter=delimiter.encode(),
             )
             stub.SaveToCSV(request)
 
@@ -222,7 +222,7 @@ class Engine:
             request = dataflow_pb2.LoadFromCSVRequest(  # type: ignore
                 collection_name=collection_name,
                 file_path=str(file_path),
-                delimiter=delimiter,
+                delimiter=delimiter.encode(),
                 has_header=has_header,
             )
             stub.LoadFromCSV(request)
