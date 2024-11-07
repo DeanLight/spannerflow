@@ -190,20 +190,33 @@ class Engine:
         self._is_rust_server_running = False
 
     @ensure_server_running
-    def save_to_csv(self, collection_name: str, file_path: Path) -> None:
+    def save_to_csv(
+        self, collection_name: str, file_path: Path, delimiter: str = ","
+    ) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.SaveToCSVRequest(  # type: ignore
-                collection_name=collection_name, file_path=str(file_path)
+                collection_name=collection_name,
+                file_path=str(file_path),
+                delimiter=delimiter,
             )
             stub.SaveToCSV(request)
 
     @ensure_server_running
-    def load_from_csv(self, collection_name: str, file_path: Path) -> None:
+    def load_from_csv(
+        self,
+        collection_name: str,
+        file_path: Path,
+        delimiter: str = ",",
+        has_header: bool = False,
+    ) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.LoadFromCSVRequest(  # type: ignore
-                collection_name=collection_name, file_path=str(file_path)
+                collection_name=collection_name,
+                file_path=str(file_path),
+                delimiter=delimiter,
+                has_header=has_header,
             )
             stub.LoadFromCSV(request)
 
@@ -310,8 +323,7 @@ class Engine:
 
     @ensure_server_running
     def run_dataflow(
-        self,
-        reversed_graph: nx.DiGraph,
+        self, reversed_graph: nx.DiGraph, output_csv_path: str | None = None
     ) -> Generator[list[str], None, None]:
         so_path, fn_name = self._rust_dataflow.build_so(reversed_graph)
 
@@ -321,6 +333,8 @@ class Engine:
                 so_path=str(so_path),
                 fn_name=fn_name,
             )
+            if output_csv_path is not None:
+                request.output_csv_path = output_csv_path
             response_iterator = stub.RunDataflow(request)
             schema_types = reversed_graph.graph["nodes_schema_types_dict"][
                 find_output(reversed_graph)

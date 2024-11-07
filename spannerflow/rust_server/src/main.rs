@@ -138,13 +138,21 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<()>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
+        let mut delimiter = b',';
+        if req.delimiter.len() > 1 {
+            return Err(Status::invalid_argument("Delimiter must be a single character"));
+        }
+        else if req.delimiter.len() == 1 {
+            delimiter = req.delimiter[0];
+        }
         let collections = COLLECTIONS.lock().await;
         if let Some(vec) = collections.get(&req.collection_name) {
-            let mut wtr = csv::Writer::from_path(req.file_path).map_err(|e| {
-                eprintln!("Failed to create CSV writer: {:?}", e);
-                Status::internal("Failed to create CSV writer")
-            })?;
-
+            let mut wtr = csv::WriterBuilder::new()
+                .delimiter(delimiter)
+                .from_path(req.file_path).map_err(|e| {
+                    eprintln!("Failed to create CSV writer: {:?}", e);
+                    Status::internal("Failed to create CSV writer")
+                })?;
             if let Some(schema) = SCHEMAS.lock().await.get(&req.collection_name) {
                 let mut csv_row = Vec::new();
                 for data_type in schema {
@@ -179,46 +187,57 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<()>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
+        let mut delimiter = b',';
+        if req.delimiter.len() > 1 {
+            return Err(Status::invalid_argument("Delimiter must be a single character"));
+        }
+        else if req.delimiter.len() == 1 {
+            delimiter = req.delimiter[0];
+        }
         let mut collections = COLLECTIONS.lock().await;
         let mut schemas = SCHEMAS.lock().await;
-        if collections.contains_key(&req.collection_name) || schemas.contains_key(&req.collection_name) {
+        if req.has_header && (collections.contains_key(&req.collection_name) || schemas.contains_key(&req.collection_name)) {
             return Err(Status::already_exists("Collection already exists"));
         }
-        let mut rdr = csv::Reader::from_path(req.file_path).map_err(|e| {
-            eprintln!("Failed to create CSV reader: {:?}", e);
-            Status::internal("Failed to create CSV reader")
-        })?;
+        let mut rdr = csv::ReaderBuilder::new()
+            .delimiter(delimiter)
+            .from_path(req.file_path).map_err(|e| {
+                eprintln!("Failed to create CSV reader: {:?}", e);
+                Status::internal("Failed to create CSV reader")
+            })?;
         let mut schema = Vec::new();
-        match rdr.headers() {
-            Ok(header) => {
-                for field in header.iter() {
-                    // Assuming dataflow::DataType::from_str_name returns an Option or Result
-                    // Handle the unwrap safely if needed
-                    if let Some(data_type) = dataflow::DataType::from_str_name(field) {
-                        schema.push(data_type);
-                    } else {
-                        // Handle the case where from_str_name returns None
-                        eprintln!("Unknown data type in header: {}", field);
+        if req.has_header {
+            match rdr.headers() {
+                Ok(header) => {
+                    for field in header.iter() {
+                        // Assuming dataflow::DataType::from_str_name returns an Option or Result
+                        // Handle the unwrap safely if needed
+                        if let Some(data_type) = dataflow::DataType::from_str_name(field) {
+                            schema.push(data_type);
+                        } else {
+                            // Handle the case where from_str_name returns None
+                            eprintln!("Unknown data type in header: {}", field);
+                        }
                     }
                 }
+                Err(e) => {
+                    eprintln!("Failed to read CSV headers: {}", e);
+                    return Err(Status::internal("Failed to read CSV headers"));
+                }
             }
-            Err(e) => {
-                eprintln!("Failed to read CSV headers: {}", e);
-                return Err(Status::internal("Failed to read CSV headers"));
-            }
+            schemas.insert(req.collection_name.clone(), schema);
+            collections.insert(req.collection_name.clone(), Vec::new());
         }
-        schemas.insert(req.collection_name.clone(), schema);
-        let mut vec = Vec::new();
 
+        let collection = collections.get_mut(&req.collection_name).unwrap();
         for result in rdr.records() {
             let record = result.map_err(|e| {
                 eprintln!("Failed to read record from CSV: {:?}", e);
                 Status::internal("Failed to read record from CSV")
             })?;
             let row: Vec<String> = record.iter().map(|s| s.to_string()).collect();
-            vec.push(row);
+            collection.push(row);
         }
-        collections.insert(req.collection_name, vec);
 
         let reply: () = ();
         Ok(Response::new(reply))
@@ -376,15 +395,35 @@ impl DataflowService for MyDataflowService {
         let req = request.into_inner();
         
         if let Ok(vec) = run_dataflow_so(req.so_path, req.fn_name).await {
-            let responses: Vec<Result<RunDataflowResponse, Status>> = vec.iter().cloned().map(|row| {
-                Ok(RunDataflowResponse { row: row })
-            }).collect();
+            if req.output_csv_path.len() > 0 {
+                let mut wtr = csv::WriterBuilder::new()
+                    .delimiter(b',')
+                    .from_path(req.output_csv_path).map_err(|e| {
+                        eprintln!("Failed to create CSV writer: {:?}", e);
+                        Status::internal("Failed to create CSV writer")
+                    })?;
+                for row in vec.iter() {
+                    wtr.write_record(row).map_err(|e| {
+                        eprintln!("Failed to write record to CSV: {:?}", e);
+                        Status::internal("Failed to write record to CSV")
+                    })?;
+                }
+                wtr.flush().map_err(|e| {
+                    eprintln!("Failed to flush CSV writer: {:?}", e);
+                    Status::internal("Failed to flush CSV writer")
+                })?;
+                return Ok(Response::new(tokio_stream::iter(vec![])));
+            }
+            else {
+                let responses: Vec<Result<RunDataflowResponse, Status>> = vec.iter().cloned().map(|row| {
+                    Ok(RunDataflowResponse { row: row })
+                }).collect();
         
 
-            let stream = iter(responses);
-
-            let response_stream = tonic::Response::new(stream);
-            Ok(response_stream)
+                let stream = iter(responses);
+                let response_stream = tonic::Response::new(stream);
+                return Ok(response_stream);
+            }
         }
         else {
             return Err(Status::internal("Failed to run dataflow"));
