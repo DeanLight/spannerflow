@@ -194,7 +194,7 @@ def get_join_code(
                         .join(&{join2_str}.map(|{join2_schema}| ({common_schema}, {join2_uncommon_schema})))
                         .map(|({common_schema if common_schema != "0" else "_"}, ({out_join1_uncommon_schema}, {out_join2_uncommon_schema}))| ({node_out_schema}));"""
 
-# %% ../nbs/50_rust_dataflow.ipynb 7
+# %% ../nbs/50_rust_dataflow.ipynb 8
 def get_union_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -215,7 +215,7 @@ def get_union_code(
     prev_node2_str = get_node_str(preds[1], anchor=anchor, in_iterate=in_iterate)
     return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
 
-# %% ../nbs/50_rust_dataflow.ipynb 8
+# %% ../nbs/50_rust_dataflow.ipynb 10
 def get_project_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -223,6 +223,7 @@ def get_project_code(
     anchor: str | int | None = None,
     in_iterate: bool = False,
 ) -> str:
+    """Generation of rust code for the project operation using differetial dataflow operator - map"""
     prev_nodes = list(graph.pred[node])
     prev_node_str = get_node_str(prev_nodes[0], anchor=anchor, in_iterate=in_iterate)
     node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
@@ -242,7 +243,7 @@ def get_project_code(
 
     return f"let {node_str} = {prev_node_str}.map(|{prev_schema}| {get_col_schema(col_names)});"
 
-# %% ../nbs/50_rust_dataflow.ipynb 9
+# %% ../nbs/50_rust_dataflow.ipynb 12
 def get_from_input_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -253,7 +254,7 @@ def get_from_input_code(
     node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
     return f"let {node_str} = input_{node}.to_collection(scope);"
 
-# %% ../nbs/50_rust_dataflow.ipynb 10
+# %% ../nbs/50_rust_dataflow.ipynb 13
 def get_rename_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -261,6 +262,7 @@ def get_rename_code(
     anchor: str | int | None = None,
     in_iterate: bool = False,
 ) -> str:
+    """Generation of rust code for the rename operation using differetial dataflow operator"""
     schema = get_col_schema(
         update_repeatable_cols_in_schema(graph.nodes[node]["schema"])
     )
@@ -272,7 +274,7 @@ def get_rename_code(
 
     return f"let {node_str} = {prev_node_str}.map(|{schema}| {schema});"
 
-# %% ../nbs/50_rust_dataflow.ipynb 11
+# %% ../nbs/50_rust_dataflow.ipynb 14
 def get_select_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -309,7 +311,7 @@ def get_select_code(
         raise ValueError(f"Unsupported theta join: {theta}. {dir(theta)}")
     return f"let {node_str} = {prev_node_str}.filter(|{get_col_schema([f"col_{i}" for i in range(len(gr_node['schema']))])}| {' && '.join(predicates)});"
 
-# %% ../nbs/50_rust_dataflow.ipynb 12
+# %% ../nbs/50_rust_dataflow.ipynb 15
 def get_groupby_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -402,7 +404,7 @@ def get_groupby_code(
     )
     return code
 
-# %% ../nbs/50_rust_dataflow.ipynb 13
+# %% ../nbs/50_rust_dataflow.ipynb 16
 def get_ie_map_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -460,7 +462,7 @@ def get_ie_map_code(
             )
     return code
 
-# %% ../nbs/50_rust_dataflow.ipynb 14
+# %% ../nbs/50_rust_dataflow.ipynb 17
 def validate_node(graph: nx.DiGraph, node: str | int) -> None:
     """Validates the node in the graph."""
     gr_node = graph.nodes[node]
@@ -501,7 +503,7 @@ def validate_node(graph: nx.DiGraph, node: str | int) -> None:
         case _:
             raise ValueError(f"Unsupported operation: {gr_node['op']}")
 
-# %% ../nbs/50_rust_dataflow.ipynb 15
+# %% ../nbs/50_rust_dataflow.ipynb 18
 def prepare_node(
     graph: nx.DiGraph,
     node: str | int,
@@ -587,7 +589,7 @@ def prepare_node(
         case _:
             raise ValueError(f"Unsupported operation: {gr_node['op']}")
 
-# %% ../nbs/50_rust_dataflow.ipynb 16
+# %% ../nbs/50_rust_dataflow.ipynb 19
 def generate_node_code(
     graph: nx.DiGraph,
     node: str | int,
@@ -621,7 +623,7 @@ def generate_node_code(
         in_iterate=in_iterate,
     )
 
-# %% ../nbs/50_rust_dataflow.ipynb 17
+# %% ../nbs/50_rust_dataflow.ipynb 20
 def generate_graph_code(
     graph: nx.DiGraph,
     code_metadata: dict,  # type: ignore
@@ -679,7 +681,7 @@ def generate_graph_code(
             )
     return flow_code
 
-# %% ../nbs/50_rust_dataflow.ipynb 19
+# %% ../nbs/50_rust_dataflow.ipynb 22
 class RustDataflow:
     def __init__(self, engine: Engine, config: Config):
         self._engine = engine
