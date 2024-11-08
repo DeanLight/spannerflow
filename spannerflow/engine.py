@@ -27,7 +27,7 @@ from google.protobuf.json_format import MessageToDict
 from .config import Config
 from .dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
 from .graph_utils import find_output
-from .grpc_server import IEFunctionService
+from .grpc_server import FunctionService
 from .span import Span
 
 # %% ../nbs/60_engine.ipynb 3
@@ -104,12 +104,16 @@ class Engine:
         ie_functions: dict[
             str, tuple[str, Callable[[Any], Any], list[type], list[type]]
         ] = dict(),
+        agg_functions: dict[
+            str, tuple[str, Callable[[Any], Any], list[type], list[type]]
+        ] = dict(),
     ):
         from spannerflow.rust_dataflow import RustDataflow
 
         port_1, port_2 = self.find_server_ports()
         self._config = Config(DATAFLOW_PORT=port_1, LISTEN_PORT=port_2)
         self._ie_functions = ie_functions
+        self._agg_functions = agg_functions
         self._rust_dataflow = RustDataflow(config=self._config, engine=self)  # type: ignore
         self._is_rust_server_running = False
         self._is_python_server_running = False
@@ -153,8 +157,9 @@ class Engine:
             self._python_grpc_server = grpc.server(
                 futures.ThreadPoolExecutor(max_workers=10)
             )
-            dataflow_pb2_grpc.add_IEFunctionServiceServicer_to_server(
-                IEFunctionService(self._ie_functions), self._python_grpc_server
+            dataflow_pb2_grpc.add_FunctionServiceServicer_to_server(
+                FunctionService(self._ie_functions, self._agg_functions),
+                self._python_grpc_server,
             )
             self._python_grpc_server.add_insecure_port(self._config.LISTEN_ADDRESS)
             self._python_grpc_server.start()
@@ -327,6 +332,21 @@ class Engine:
 
     def del_ie_function(self, name: str):
         del self._ie_functions[name]
+
+    def set_agg_function(
+        self,
+        name: str,
+        func: Callable[[Any], Any],
+        input_types: list[type],
+        output_types: list[type],
+    ):
+        self._agg_functions[name] = (name, func, input_types, output_types)
+
+    def get_agg_function(self, name: str):
+        return self._agg_functions[name]
+
+    def del_agg_function(self, name: str):
+        del self._agg_functions[name]
 
     @ensure_server_running
     def run_dataflow(

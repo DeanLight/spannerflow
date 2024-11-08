@@ -5,6 +5,12 @@ use hex;
 use regex::Regex;
 use std::sync::Arc;
 
+extern "C" {
+    fn get_document(id: i32) -> String;
+    fn delete_document(id: i32, doc: String);
+    fn add_document(id: i32, doc: String);
+}
+
 fn small_hash(txt: &str, length: usize) -> String {
     let mut hasher = Sha1::new();
     hasher.update(txt.as_bytes());

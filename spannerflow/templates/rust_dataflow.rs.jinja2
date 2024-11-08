@@ -16,7 +16,7 @@ use futures::stream::{self};
 
 use tokio::runtime::Runtime;
 
-use dataflow::ie_function_service_client::IeFunctionServiceClient;
+use dataflow::function_service_client::FunctionServiceClient;
 use dataflow::*;
 
 pub mod dataflow {
@@ -53,7 +53,7 @@ fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>
 
     rt.block_on(async {
         let mut output: Vec<Vec<String>> = vec![];
-        let mut client = IeFunctionServiceClient::connect(address).await.unwrap();
+        let mut client = FunctionServiceClient::connect(address).await.unwrap();
 
         let mut requests: Vec<RunIeFunctionRequest> = vec![
             RunIeFunctionRequest {
@@ -71,6 +71,41 @@ fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>
         let request_stream = stream::iter(requests);
 
         let mut response_stream = client.run_ie_function(Request::new(request_stream)).await?.into_inner(); // Declare as mutable since we need to iterate over it
+
+        while let Some(response) = response_stream.message().await? {       
+            let  response_row = response.row.clone();
+            println!("RESPONSE: {:?}", response_row);     
+            output.push(response_row);
+        }
+
+        Ok::<Vec<Vec<String>>, Box<dyn std::error::Error>>(output)
+    })
+}
+
+
+fn run_agg_function(address: String, function_name: String, data: Vec<Vec<String>> ) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
+    let rt = Runtime::new()?;
+
+    rt.block_on(async {
+        let mut output: Vec<Vec<String>> = vec![];
+        let mut client = FunctionServiceClient::connect(address).await.unwrap();
+
+        let mut requests: Vec<RunAggFunctionRequest> = vec![
+            RunAggFunctionRequest {
+                message_type: Some(run_agg_function_request::MessageType::FunctionName(function_name)),
+            },
+        ];
+        for row in data {
+            requests.push(RunAggFunctionRequest {
+                message_type: Some(run_agg_function_request::MessageType::Row(RowRequest {
+                    row: row,
+                })),
+            });
+        }
+
+        let request_stream = stream::iter(requests);
+
+        let mut response_stream = client.run_agg_function(Request::new(request_stream)).await?.into_inner(); // Declare as mutable since we need to iterate over it
 
         while let Some(response) = response_stream.message().await? {       
             let  response_row = response.row.clone();

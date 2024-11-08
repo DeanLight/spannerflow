@@ -26,7 +26,7 @@ if _version_not_supported:
     )
 
 
-class IEFunctionServiceStub(object):
+class FunctionServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -36,13 +36,18 @@ class IEFunctionServiceStub(object):
             channel: A grpc.Channel.
         """
         self.RunIEFunction = channel.stream_stream(
-                '/dataflow.v1.IEFunctionService/RunIEFunction',
+                '/dataflow.v1.FunctionService/RunIEFunction',
                 request_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionRequest.SerializeToString,
                 response_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionResponse.FromString,
                 _registered_method=True)
+        self.RunAggFunction = channel.stream_stream(
+                '/dataflow.v1.FunctionService/RunAggFunction',
+                request_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionRequest.SerializeToString,
+                response_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionResponse.FromString,
+                _registered_method=True)
 
 
-class IEFunctionServiceServicer(object):
+class FunctionServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def RunIEFunction(self, request_iterator, context):
@@ -51,23 +56,34 @@ class IEFunctionServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RunAggFunction(self, request_iterator, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-def add_IEFunctionServiceServicer_to_server(servicer, server):
+
+def add_FunctionServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RunIEFunction': grpc.stream_stream_rpc_method_handler(
                     servicer.RunIEFunction,
                     request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionRequest.FromString,
                     response_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionResponse.SerializeToString,
             ),
+            'RunAggFunction': grpc.stream_stream_rpc_method_handler(
+                    servicer.RunAggFunction,
+                    request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionRequest.FromString,
+                    response_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'dataflow.v1.IEFunctionService', rpc_method_handlers)
+            'dataflow.v1.FunctionService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('dataflow.v1.IEFunctionService', rpc_method_handlers)
+    server.add_registered_method_handlers('dataflow.v1.FunctionService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class IEFunctionService(object):
+class FunctionService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -84,9 +100,36 @@ class IEFunctionService(object):
         return grpc.experimental.stream_stream(
             request_iterator,
             target,
-            '/dataflow.v1.IEFunctionService/RunIEFunction',
+            '/dataflow.v1.FunctionService/RunIEFunction',
             dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionRequest.SerializeToString,
             dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RunAggFunction(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(
+            request_iterator,
+            target,
+            '/dataflow.v1.FunctionService/RunAggFunction',
+            dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionRequest.SerializeToString,
+            dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionResponse.FromString,
             options,
             channel_credentials,
             insecure,

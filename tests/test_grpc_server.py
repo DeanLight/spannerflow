@@ -4,7 +4,7 @@ import grpc
 import pytest
 
 from spannerflow.dataflow.v1 import dataflow_pb2
-from spannerflow.grpc_server import IEFunctionService
+from spannerflow.grpc_server import FunctionService
 
 
 @pytest.mark.asyncio
@@ -12,7 +12,7 @@ async def test_run_ie_function():
     ie_functions = {
         "test_func": ("test_func", lambda x: [((int(x[0]) * 2),)], [int], [int])
     }
-    service = IEFunctionService(ie_functions)
+    service = FunctionService(ie_functions)
 
     # Mock the request iterator
     request_iterator = AsyncMock()
@@ -39,7 +39,7 @@ async def test_run_ie_function():
 @pytest.mark.asyncio
 async def test_run_ie_function_not_found():
     ie_functions = {}
-    service = IEFunctionService(ie_functions)
+    service = FunctionService(ie_functions)
 
     # Mock the request iterator
     request_iterator = AsyncMock()
@@ -66,7 +66,7 @@ async def test_run_ie_function_no_function_name():
     ie_functions = {
         "test_func": ("description", lambda x: [(str(int(x) * 2),)], [int], [int])
     }
-    service = IEFunctionService(ie_functions)
+    service = FunctionService(ie_functions)
 
     # Mock the request iterator
     request_iterator = AsyncMock()
@@ -91,7 +91,7 @@ async def test_run_ie_function_function_name_after_rows():
     ie_functions = {
         "test_func": ("description", lambda x: [(str(int(x) * 2),)], [int], [int])
     }
-    service = IEFunctionService(ie_functions)
+    service = FunctionService(ie_functions)
 
     # Mock the request iterator
     request_iterator = AsyncMock()
@@ -121,7 +121,7 @@ async def test_run_ie_function_multiple_function_name():
     ie_functions = {
         "test_func": ("description", lambda x: [(str(int(x) * 2),)], [int], [int])
     }
-    service = IEFunctionService(ie_functions)
+    service = FunctionService(ie_functions)
 
     # Mock the request iterator
     request_iterator = AsyncMock()
