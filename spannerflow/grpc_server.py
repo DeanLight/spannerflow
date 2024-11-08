@@ -36,7 +36,6 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
         func = None
         rows = []
         for request in request_iterator:
-            print(request)
             if request.HasField("function_name"):
                 if function_name is not None:
                     context.set_details("Function name already provided.")
@@ -45,7 +44,6 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                 # Extract the function_name from the first request
                 function_name = request.function_name
                 func_tuple = self._agg_functions.get(function_name)
-                print(self._agg_functions)
                 print(func_tuple)
 
                 if func_tuple is None:
@@ -62,38 +60,29 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                     context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                     return  # Function name must come first
                 str_arguments = [str(cell) for cell in request.row.row]
-                rows.append(
-                    [func_in_scehma[i](cell) for i, cell in enumerate(str_arguments)]
-                )
+                val = [func_in_scehma[i](cell) for i, cell in enumerate(str_arguments)]
+                rows.append(val[0] if len(val) == 1 else val)
 
         if function_name is None or func is None:
             context.set_details("No function name provided.")
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return
 
-        for row in rows:
-            res = func(*row)
+        print(rows)
+        res = func(rows)
+        print(res)
 
-            for r in res:
-                if len(func_out_schema) > 1:
-                    response_row = [
-                        (
-                            str(cell)
-                            if func_out_schema[i] is not bool
-                            else str(cell).lower()
-                        )
-                        for i, cell in enumerate(r)
-                    ]
-                else:
-                    response_row = (
-                        [str(r)] if func_out_schema[0] is not bool else [str(r).lower()]
-                    )
+        if len(func_out_schema) > 1:
+            response_row = [
+                (str(cell) if func_out_schema[i] is not bool else str(cell).lower())
+                for i, cell in enumerate(res)
+            ]
+        else:
+            response_row = [str(res) if res is not bool else str(res).lower()]
 
-                response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
-                    row=(response_row)
-                )
+        response = dataflow_pb2.RunIEFunctionResponse(row=response_row)  # type: ignore
 
-                yield response
+        yield response
 
     def RunIEFunction(
         self,
@@ -155,6 +144,6 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                     )
 
                 response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
-                    row=(response_row)
+                    row=response_row
                 )
                 yield response

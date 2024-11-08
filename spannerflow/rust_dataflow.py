@@ -371,6 +371,7 @@ def get_groupby_code(
             case _:
                 # TODO: Fix python agg function
                 print(gr_node)
+                print(groupby_cols)
                 remote_aggregation_template = code_metadata[
                     "template_env"
                 ].get_template("remote_aggregate.jinja2")
