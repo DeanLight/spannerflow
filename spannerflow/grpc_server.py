@@ -36,6 +36,7 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
         func = None
         rows = []
         for request in request_iterator:
+            print(request)
             if request.HasField("function_name"):
                 if function_name is not None:
                     context.set_details("Function name already provided.")
@@ -44,6 +45,8 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                 # Extract the function_name from the first request
                 function_name = request.function_name
                 func_tuple = self._agg_functions.get(function_name)
+                print(self._agg_functions)
+                print(func_tuple)
 
                 if func_tuple is None:
                     context.set_details(f"Agg Function '{function_name}' not found.")

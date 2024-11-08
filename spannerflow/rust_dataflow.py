@@ -368,15 +368,15 @@ def get_groupby_code(
                 agg_code.append(f"{agg_var}.1 += *cnt as i32;")
             case _:
                 # TODO: Fix python agg function
-                ie_map_template = code_metadata["template_env"].get_template(
-                    "remote_aggregate.jinja2"
-                )
                 print(gr_node)
-                code = ie_map_template.render(
+                remote_aggregation_template = code_metadata[
+                    "template_env"
+                ].get_template("remote_aggregate.jinja2")
+                code = remote_aggregation_template.render(
                     output_node=node_str,
                     prev_node=prev_node_str,
                     grpc_address=code_metadata["grpc_address"],
-                    function_name=agg_func["agg_func"],
+                    function_name=agg_func["agg_func"].__name__,
                     in_schema=get_col_schema(
                         gr_node["schema"][: len(gr_node["schema"])]
                     ),
@@ -554,8 +554,11 @@ def prepare_node(
                     agg == "count"
                 ):  # what about min / max should it match int if the field is int?
                     schema_types.append("DATA_TYPE_INT")
-                else:
+                elif agg in ("sum", "avg", "min", "max"):
                     schema_types.append("DATA_TYPE_FLOAT")
+                else:  # custom aggregation function
+                    # TODO: Fix python agg function
+                    schema_types.append("DATA_TYPE_STRING")
             nodes_schema_types_dict[node] = schema_types
         case "get_const":
             nodes_schema_types_dict[node] = [
