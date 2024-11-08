@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync;
 use std::env;
 use csv;
 
@@ -21,6 +22,25 @@ pub mod dataflow {
 lazy_static::lazy_static! {
     static ref COLLECTIONS: Mutex<HashMap<String, Vec<Vec<String>>>> = Mutex::new(HashMap::new());
     static ref SCHEMAS: Mutex<HashMap<String, Vec<dataflow::DataType>>> = Mutex::new(HashMap::new());
+    static ref DOCUMENTS: sync::Mutex<HashMap<i32, String>> = sync::Mutex::new(HashMap::new());
+}
+
+#[no_mangle]
+pub extern "C" fn add_document(id: i32, doc: String) {
+    let mut documents = DOCUMENTS.lock().unwrap();
+    documents.insert(id, doc);
+}
+
+#[no_mangle]
+pub extern "C" fn delete_document(id: i32, doc: String) {
+    let mut documents = DOCUMENTS.lock().unwrap();
+    documents.remove(&id);
+}
+
+#[no_mangle]
+pub extern "C" fn get_document(id: i32) -> String {
+    let documents = DOCUMENTS.lock().unwrap();
+    documents.get(&id).unwrap().clone()
 }
 
 #[derive(Debug, Default)]
