@@ -45,13 +45,17 @@ def change_node_key(graph: nx.DiGraph, old_key: str | int, new_key: str | int) -
 def get_cycles(graph: nx.DiGraph) -> dict[str | int, nx.DiGraph]:
     """Returns a dictionary of cycles in the graph, with the anchor node as the key"""
     cycles = nx.recursive_simple_cycles(graph)
-    cycle_dicts = dict()
-
+    cycles_nodes = dict()  # type: ignore
     for cycle in cycles:
         anchor = find_anchor_of_cycle(graph, cycle)
-        cycle_dicts[anchor] = graph.subgraph(cycle).copy()
+        if anchor in cycles_nodes:
+            cycles_nodes[anchor].update(cycle)
+        else:
+            cycles_nodes[anchor] = set(cycle)
 
-    return cycle_dicts
+    return {
+        anchor: graph.subgraph(cycle).copy() for anchor, cycle in cycles_nodes.items()
+    }
 
 
 def find_anchor_of_cycle(graph: nx.DiGraph, cycle: nx.DiGraph) -> str | int:
@@ -108,12 +112,9 @@ def traverse_cycle(cycle: nx.DiGraph, anchor: str | int) -> list[str | int]:
     (a direct edge must exist between adjucent nodes in the list)
     The anchor node must be the last node in the list.
     """
-    temp_node = anchor
-    cycle_order: list[int | str] = list()
-    while len(cycle_order) < len(cycle):
-        cycle_order += list(cycle.successors(temp_node))
-        temp_node = cycle_order[-1]
-    return cycle_order
+    cycle_copy = cycle.copy()
+    cycle_copy.remove_node(anchor)
+    return list(nx.topological_sort(cycle_copy)) + [anchor]
 
 
 def find_ingress_nodes(graph: nx.DiGraph, cycle) -> list[int | str]:
@@ -121,7 +122,7 @@ def find_ingress_nodes(graph: nx.DiGraph, cycle) -> list[int | str]:
     ingress_nodes = []
     for node in cycle:
         if type(node) is str and "iter" in node:
-            node = node.split("_")[1]
+            node = node.split("iter_")[1]
         for pred in graph.pred[node]:
             if pred not in cycle and "anchor" not in graph.nodes[pred]:
                 ingress_nodes.append(pred)

@@ -68,11 +68,21 @@ class IEFunctionService(dataflow_pb2_grpc.IEFunctionServiceServicer):
             res = func(*row)
 
             for r in res:
-                response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
-                    row=(
-                        [str(cell) for cell in r]
-                        if len(func_out_schema) > 1
-                        else [str(r)]
+                if len(func_out_schema) > 1:
+                    response_row = [
+                        (
+                            str(cell)
+                            if func_out_schema[i] is not bool
+                            else str(cell).lower()
+                        )
+                        for i, cell in enumerate(r)
+                    ]
+                else:
+                    response_row = (
+                        [str(r)] if func_out_schema[0] is not bool else [str(r).lower()]
                     )
+
+                response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
+                    row=(response_row)
                 )
                 yield response
