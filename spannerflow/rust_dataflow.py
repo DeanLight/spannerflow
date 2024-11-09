@@ -350,7 +350,7 @@ def get_groupby_code(
         agg_index = agg_func["index"]
         agg_var = f"{agg_func['agg_func']}_{col_name}"
         output.append(agg_var)
-        val = "val" if not multi_agg else f"val.{agg_index}"
+        val = "*val" if not multi_agg else f"val.{agg_index}"
         match agg_func["agg_func"]:
             case "sum":
                 declares.append(f"let mut {agg_var}: i32 = 0;")
@@ -360,10 +360,14 @@ def get_groupby_code(
                 agg_code.append(f"{agg_var} += *cnt as i32;")
             case "max":
                 declares.append(f"let mut {agg_var}: i32 = i32::MIN;")
-                agg_code.append(f"{agg_var} = std::cmp::max({agg_var}, {val});")
+                agg_code.append(
+                    f"{agg_var} = std::cmp::max({agg_var}, {"*" if not multi_agg else ""}{val});"
+                )
             case "min":
                 declares.append(f"let mut {agg_var}: i32 = i32::MAX;")
-                agg_code.append(f"{agg_var} = std::cmp::min({agg_var}, {val});")
+                agg_code.append(
+                    f"{agg_var} = std::cmp::min({agg_var}, {"*" if not multi_agg else ""}{val});"
+                )
             case "avg":
                 declares.append(f"let mut {agg_var}: (i32, i32) = (0, 0);")
                 agg_code.append(f"{agg_var}.0 += {val} * (*cnt as i32);")
