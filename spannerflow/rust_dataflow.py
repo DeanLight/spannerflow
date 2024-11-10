@@ -11,6 +11,7 @@ __all__ = ['DATAFLOW_TO_RUST_TYPES', 'PYTHON_TO_DATAFLOW_TYPES', 'STD_IE_FUNCTIO
 
 # %% ../nbs/50_rust_dataflow.ipynb 2
 import os
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -762,10 +763,15 @@ class RustDataflow:
             lib_filename = f"{crate_name}{extension}"
         else:
             raise RuntimeError("Unsupported OS")
+        lib_path = self._config.RUST_SERVER_LIB_DIR_PATH.joinpath(
+            "target", "release", lib_filename
+        )
+        new_lib_path = self._config.GENERATED_RUST_PROJECT_PATH.joinpath(
+            f"{timestamp}{extension}"
+        )
+        shutil.copy(lib_path, new_lib_path)
         return (
-            self._config.RUST_SERVER_LIB_DIR_PATH.joinpath(
-                "target", "release", lib_filename
-            ),
+            new_lib_path,
             f"query_{self._query_id}",
         )
 
