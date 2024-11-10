@@ -255,6 +255,14 @@ impl DataflowService for MyDataflowService {
         }
 
         let collection = collections.get_mut(&req.collection_name).unwrap();
+        if !req.has_header {
+            let record = rdr.headers().map_err(|e| {
+                eprintln!("Failed to read header from CSV: {:?}", e);
+                Status::internal("Failed to read header from CSV")
+            })?;
+            let row: Vec<String> = record.iter().map(|s| s.to_string()).collect();
+            collection.push(row);
+        }
         for result in rdr.records() {
             let record = result.map_err(|e| {
                 eprintln!("Failed to read record from CSV: {:?}", e);
