@@ -1,14 +1,15 @@
 use sha1::{Sha1, Digest};
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+use std::os::raw::c_char;
 use hex;
 use regex::Regex;
 use std::sync::Arc;
 
 extern "C" {
-    fn get_document(id: i32) -> String;
-    fn delete_document(id: i32, doc: String);
-    fn add_document(id: i32, doc: String);
+    fn get_document(id: i32) -> *mut c_char;
+    fn delete_document(id: i32);
+    fn add_document(id: i32, doc: *const c_char);
 }
 
 fn small_hash(txt: &str, length: usize) -> String {
