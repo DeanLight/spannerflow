@@ -204,17 +204,19 @@ def get_union_code(
     in_iterate: bool = False,
 ) -> str:
     """Returns a string of rust code for unioning two collections."""
+    node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
     preds = [
         pred
         for pred in graph.pred[node]
         if "reduced" not in graph.get_edge_data(pred, node)
     ]
+    if not preds:
+        return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = scope.new_collection_from(vec![]).1;"
     prev_node1_str = get_node_str(preds[0], anchor=anchor, in_iterate=in_iterate)
-    node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
     if len(preds) == 1:
         return f"let {' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.clone();"
     prev_node2_str = get_node_str(preds[1], anchor=anchor, in_iterate=in_iterate)
-    return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str});"
+    return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str}).distinct();"
 
 # %% ../nbs/50_rust_dataflow.ipynb 10
 def get_project_code(
@@ -471,7 +473,7 @@ def get_ie_map_code(
 # %% ../nbs/50_rust_dataflow.ipynb 17
 def validate_node(graph: nx.DiGraph, node: str | int) -> None:
     """Validates the node in the graph."""
-    gr_node = graph.nodes[node]
+    gr_node: dict = graph.nodes[node]
     preds = [graph.nodes[key] for key in graph.pred[node].keys()]
     match gr_node["op"]:
         case "union":
@@ -480,7 +482,9 @@ def validate_node(graph: nx.DiGraph, node: str | int) -> None:
                 for pred in graph.pred[node]
                 if "reduced" not in graph.get_edge_data(pred, node)
             ]
-            if len(preds) not in (1, 2):
+            if len(preds) not in (0, 1, 2) or (
+                len(preds) == 0 and not gr_node.get("anchor", False)
+            ):
                 raise ValueError(
                     "Union node has invalid number of predecessors: ",
                     (len(preds), node),
