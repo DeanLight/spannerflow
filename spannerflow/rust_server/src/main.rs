@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::sync;
 use std::env;
+use std::os::raw::c_char;
+use std::ffi::{CString, CStr};
+
 use csv;
 
 
@@ -26,21 +29,27 @@ lazy_static::lazy_static! {
 }
 
 #[no_mangle]
-pub extern "C" fn add_document(id: i32, doc: String) {
-    let mut documents = DOCUMENTS.lock().unwrap();
-    documents.insert(id, doc);
+pub extern "C" fn add_document(id: i32, doc: *const c_char) {
+    if !doc.is_null() {
+        let c_str = unsafe { CStr::from_ptr(doc) };
+        let doc_str = c_str.to_str().unwrap();
+        let mut documents = DOCUMENTS.lock().unwrap();
+        documents.insert(id, doc_str.to_string());
+    }
+    
 }
 
 #[no_mangle]
-pub extern "C" fn delete_document(id: i32, doc: String) {
+pub extern "C" fn delete_document(id: i32) {
     let mut documents = DOCUMENTS.lock().unwrap();
     documents.remove(&id);
 }
 
 #[no_mangle]
-pub extern "C" fn get_document(id: i32) -> String {
+pub extern "C" fn get_document(id: i32) -> *mut c_char {
     let documents = DOCUMENTS.lock().unwrap();
-    documents.get(&id).unwrap().clone()
+    let doc = documents.get(&id).unwrap().clone();
+    CString::new(doc).unwrap().into_raw()
 }
 
 #[derive(Debug, Default)]
