@@ -126,23 +126,14 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
             return
 
         for row in rows:
-            res = func(*row)
-
-            for r in res:
-                if len(func_out_schema) > 1:
-                    response_row = [
-                        (
-                            str(cell)
-                            if func_out_schema[i] is not bool
-                            else str(cell).lower()
-                        )
-                        for i, cell in enumerate(r)
-                    ]
-                else:
-                    response_row = (
-                        [str(r)] if func_out_schema[0] is not bool else [str(r).lower()]
-                    )
-
+            output = func(*row)
+            if not isinstance(output, (tuple, list)):
+                output = (output,)
+            for r in output:
+                response_row = [
+                    (str(cell) if func_out_schema[i] is not bool else str(cell).lower())
+                    for i, cell in enumerate(r)
+                ]
                 response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
                     row=response_row
                 )
