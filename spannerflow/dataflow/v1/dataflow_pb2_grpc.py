@@ -200,6 +200,11 @@ class DataflowServiceStub(object):
                 request_serializer=dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.GetSpan = channel.unary_unary(
+                '/dataflow.v1.DataflowService/GetSpan',
+                request_serializer=dataflow_dot_v1_dot_dataflow__pb2.GetSpanRequest.SerializeToString,
+                response_deserializer=dataflow_dot_v1_dot_dataflow__pb2.GetSpanResponse.FromString,
+                _registered_method=True)
 
 
 class DataflowServiceServicer(object):
@@ -265,6 +270,12 @@ class DataflowServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetSpan(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataflowServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -317,6 +328,11 @@ def add_DataflowServiceServicer_to_server(servicer, server):
                     servicer.SaveToCSV,
                     request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetSpan': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSpan,
+                    request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.GetSpanRequest.FromString,
+                    response_serializer=dataflow_dot_v1_dot_dataflow__pb2.GetSpanResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -589,6 +605,33 @@ class DataflowService(object):
             '/dataflow.v1.DataflowService/SaveToCSV',
             dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetSpan(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/dataflow.v1.DataflowService/GetSpan',
+            dataflow_dot_v1_dot_dataflow__pb2.GetSpanRequest.SerializeToString,
+            dataflow_dot_v1_dot_dataflow__pb2.GetSpanResponse.FromString,
             options,
             channel_credentials,
             insecure,

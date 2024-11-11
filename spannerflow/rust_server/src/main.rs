@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 use std::sync;
 use std::env;
-use std::os::raw::c_char;
-use std::ffi::{CString, CStr};
-
 use csv;
 
 
@@ -26,34 +23,24 @@ lazy_static::lazy_static! {
     static ref COLLECTIONS: Mutex<HashMap<String, Vec<Vec<String>>>> = Mutex::new(HashMap::new());
     static ref SCHEMAS: Mutex<HashMap<String, Vec<dataflow::DataType>>> = Mutex::new(HashMap::new());
     // change id to string, value need to be Arc<string>
-    static ref DOCUMENTS: sync::Mutex<HashMap<i32, String>> = sync::Mutex::new(HashMap::new());
+    static ref DOCUMENTS: sync::Mutex<HashMap<String, sync::Arc<String>>> = sync::Mutex::new(HashMap::new());
 }
 
 #[no_mangle]
 // change id to string, change to dylib - change to get/add: if exists return pointer if not, create one.
-pub extern "C" fn add_document(id: i32, doc: *const c_char) {
-    if !doc.is_null() {
-        let c_str = unsafe { CStr::from_ptr(doc) };
-        let doc_str = c_str.to_str().unwrap();
-        let mut documents = DOCUMENTS.lock().unwrap();
-        documents.insert(id, doc_str.to_string());
-    }
-    
-}
-
-#[no_mangle]
-// not necceary - TODO in future: if no ore spans point to a document remove it from registry.- maybe uing refcount.
-pub extern "C" fn delete_document(id: i32) {
+pub fn add_document(id: String, doc: sync::Arc<String>) {
     let mut documents = DOCUMENTS.lock().unwrap();
-    documents.remove(&id);
+    documents.insert(id, doc);
 }
 
 #[no_mangle]
 // change to get_span - input id, start, end- return copy of substring of document. expose this to the API
-pub extern "C" fn get_document(id: i32) -> *mut c_char {
+pub fn get_document(id: String) -> Option<sync::Arc<String>> {
     let documents = DOCUMENTS.lock().unwrap();
-    let doc = documents.get(&id).unwrap().clone();
-    CString::new(doc).unwrap().into_raw()
+    match documents.get(&id) {
+        Some(doc) => Some(sync::Arc::clone(doc)),
+        None => None,
+    }
 }
 
 #[derive(Debug, Default)]
@@ -112,6 +99,27 @@ impl DataflowService for MyDataflowService {
     type GetCollectionStream = tokio_stream::Iter<std::vec::IntoIter<Result<GetCollectionResponse, tonic::Status>>>;
     type RunDataflowStream = tokio_stream::Iter<std::vec::IntoIter<Result<RunDataflowResponse, tonic::Status>>>;
     
+    async fn get_span(
+        &self,
+        request: Request<GetSpanRequest>,
+    ) -> Result<Response<GetSpanResponse>, Status> {
+        println!("Got a request: {:?}", request);
+        let req = request.into_inner();
+        let documents = DOCUMENTS.lock().unwrap();
+        if let Some(doc) = documents.get(&req.id) {
+            if req.start > req.end || req.start >= doc.len() as u32 || req.end >= doc.len() as u32 {
+                return Err(Status::invalid_argument("Invalid start or end index"));
+            }
+            let span = doc[req.start as usize..req.end as usize].to_string();
+            let reply = GetSpanResponse {
+                span: span,
+            };
+            Ok(Response::new(reply))
+        } else {
+            return Err(Status::not_found("Document not found"));
+        }
+    }
+
     async fn add_rows(
         &self,
         request: Request<tonic::Streaming<AddRowsRequest>>,

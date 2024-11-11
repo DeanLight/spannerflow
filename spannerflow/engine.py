@@ -371,7 +371,10 @@ class Engine:
                     schema_types, [str(item) for item in response.row]
                 )
 
-    """
-    def get_span(self, doc_id, start, end) -> Span:
-        // call the api for get span
-    """
+    @ensure_server_running
+    def get_span(self, doc_id: str, start: int, end: int) -> Span:
+        with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
+            stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
+            request = dataflow_pb2.GetSpanRequest(id=doc_id, start=start, end=end)  # type: ignore
+            response = stub.GetSpan(request)
+            return Span(doc=response.span)
