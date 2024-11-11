@@ -4,23 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["dylib"]
 path = "src/latest.rs"
 
 [dependencies]
-timely = "0.13.0" 
-differential-dataflow = "0.13.0"
+timely = "0.14.0" 
+differential-dataflow = "0.13.1"
 prost = "0.13.3"
 prost-types = "0.13.3"
 tonic = "0.12.3"
-serde = { version = "1.0", features = ["derive", "rc"] }
-serde_derive = "1.0.214"
+serde = { version = "1.0.215", features = ["derive", "rc"] }
+serde_derive = "1.0.215"
 regex = "1.11.1"
 sha1 = "0.10.6"
 hex = "0.4.3"
 futures = "0.3.31"
-ordered-float = "4.4.0"
-tokio = { version = "1.40.0", features = ["full"] }
+ordered-float = "4.5.0"
+tokio = { version = "1.41.1", features = ["full"] }
 
 [build-dependencies]
 tonic-build = "0.12.3"
