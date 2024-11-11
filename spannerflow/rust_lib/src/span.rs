@@ -97,6 +97,17 @@ impl Span {
     }
 }
 
+/* 
+impl From<&str> for Span {
+    fn from(s: &str) -> Span {
+        // regex extraction of span paramters.
+        // check if documentid exists in documet registry
+        // if not add document to registry
+        // return span with arc<string> to the document      
+    }
+} 
+*/
+
 impl std::fmt::Debug for Span{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[@{},{},{}) \"{}\"", self.name, self.start, self.end, &self.doc[self.start..self.end])

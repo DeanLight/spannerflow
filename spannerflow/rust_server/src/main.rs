@@ -25,10 +25,12 @@ pub mod dataflow {
 lazy_static::lazy_static! {
     static ref COLLECTIONS: Mutex<HashMap<String, Vec<Vec<String>>>> = Mutex::new(HashMap::new());
     static ref SCHEMAS: Mutex<HashMap<String, Vec<dataflow::DataType>>> = Mutex::new(HashMap::new());
+    // change id to string, value need to be Arc<string>
     static ref DOCUMENTS: sync::Mutex<HashMap<i32, String>> = sync::Mutex::new(HashMap::new());
 }
 
 #[no_mangle]
+// change id to string, change to dylib - change to get/add: if exists return pointer if not, create one.
 pub extern "C" fn add_document(id: i32, doc: *const c_char) {
     if !doc.is_null() {
         let c_str = unsafe { CStr::from_ptr(doc) };
@@ -40,12 +42,14 @@ pub extern "C" fn add_document(id: i32, doc: *const c_char) {
 }
 
 #[no_mangle]
+// not necceary - TODO in future: if no ore spans point to a document remove it from registry.- maybe uing refcount.
 pub extern "C" fn delete_document(id: i32) {
     let mut documents = DOCUMENTS.lock().unwrap();
     documents.remove(&id);
 }
 
 #[no_mangle]
+// change to get_span - input id, start, end- return copy of substring of document. expose this to the API
 pub extern "C" fn get_document(id: i32) -> *mut c_char {
     let documents = DOCUMENTS.lock().unwrap();
     let doc = documents.get(&id).unwrap().clone();

@@ -370,3 +370,8 @@ class Engine:
                 yield deserialize_row(
                     schema_types, [str(item) for item in response.row]
                 )
+
+    """
+    def get_span(self, doc_id, start, end) -> Span:
+        // call the api for get span
+    """
