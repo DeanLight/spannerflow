@@ -127,9 +127,9 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
 
         for row in rows:
             output = func(*row)
-            if not isinstance(output, (tuple, list)):
-                output = (output,)
             for r in output:
+                if not isinstance(r, (tuple, list)):
+                    r = (r,)
                 response_row = [
                     (str(cell) if func_out_schema[i] is not bool else str(cell).lower())
                     for i, cell in enumerate(r)

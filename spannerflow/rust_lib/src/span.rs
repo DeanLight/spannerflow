@@ -7,9 +7,9 @@ use regex::Regex;
 use std::sync::Arc;
 
 extern "C" {
-    fn get_document(id: i32) -> *mut c_char;
-    fn delete_document(id: i32);
-    fn add_document(id: i32, doc: *const c_char);
+    fn add_document(id: String, doc: String);
+    fn delete_document(id: String);
+    fn get_document(id: String) -> Arc<String>;
 }
 
 fn small_hash(txt: &str, length: usize) -> String {
