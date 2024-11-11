@@ -1,0 +1,159 @@
+#![allow(warnings)]
+extern crate timely;
+extern crate differential_dataflow;
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+use differential_dataflow::input::{InputSession ,Input};
+use differential_dataflow::operators::*;
+
+use tonic::Request;
+
+use ordered_float::OrderedFloat;
+
+use futures::stream::{self};
+
+use tokio::runtime::Runtime;
+
+use dataflow::function_service_client::FunctionServiceClient;
+use dataflow::*;
+
+pub mod dataflow {
+    tonic::include_proto!("dataflow.v1");
+}
+
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+
+mod span;
+mod std_ie_functions;
+use span::*;
+use std_ie_functions::*;
+
+macro_rules! tuple_to_vec_string {
+    // Base case: empty tuple
+    () => {
+        Vec::new()
+    };
+    
+    // Recursive case: extracts the first element and calls the macro recursively on the rest
+    ($first:expr $(, $rest:expr)*) => {
+        {
+            let mut vec = vec![$first.to_string()];
+            vec.extend(tuple_to_vec_string!($($rest),*));
+            vec
+        }
+    };
+}
+
+fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>> ) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
+    let rt = Runtime::new()?;
+
+    rt.block_on(async {
+        let mut output: Vec<Vec<String>> = vec![];
+        let mut client = FunctionServiceClient::connect(address).await.unwrap();
+
+        let mut requests: Vec<RunIeFunctionRequest> = vec![
+            RunIeFunctionRequest {
+                message_type: Some(run_ie_function_request::MessageType::FunctionName(function_name)),
+            },
+        ];
+        for row in data {
+            requests.push(RunIeFunctionRequest {
+                message_type: Some(run_ie_function_request::MessageType::Row(RowRequest {
+                    row: row,
+                })),
+            });
+        }
+
+        let request_stream = stream::iter(requests);
+
+        let mut response_stream = client.run_ie_function(Request::new(request_stream)).await?.into_inner(); // Declare as mutable since we need to iterate over it
+
+        while let Some(response) = response_stream.message().await? {       
+            let  response_row = response.row.clone();
+            println!("RESPONSE: {:?}", response_row);     
+            output.push(response_row);
+        }
+
+        Ok::<Vec<Vec<String>>, Box<dyn std::error::Error>>(output)
+    })
+}
+
+
+fn run_agg_function(address: String, function_name: String, data: Vec<Vec<String>> ) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
+    let rt = Runtime::new()?;
+
+    rt.block_on(async {
+        let mut output: Vec<Vec<String>> = vec![];
+        let mut client = FunctionServiceClient::connect(address).await.unwrap();
+
+        let mut requests: Vec<RunAggFunctionRequest> = vec![
+            RunAggFunctionRequest {
+                message_type: Some(run_agg_function_request::MessageType::FunctionName(function_name)),
+            },
+        ];
+        for row in data {
+            requests.push(RunAggFunctionRequest {
+                message_type: Some(run_agg_function_request::MessageType::Row(RowRequest {
+                    row: row,
+                })),
+            });
+        }
+
+        let request_stream = stream::iter(requests);
+
+        let mut response_stream = client.run_agg_function(Request::new(request_stream)).await?.into_inner(); // Declare as mutable since we need to iterate over it
+
+        while let Some(response) = response_stream.message().await? {       
+            let  response_row = response.row.clone();
+            println!("RESPONSE: {:?}", response_row);     
+            output.push(response_row);
+        }
+
+        Ok::<Vec<Vec<String>>, Box<dyn std::error::Error>>(output)
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>{
+    {% for key,value in sources.items() %}
+        {% if value["op"] == "get_rel" %}let collection_{{ value['name'] }} = collections.get("{{ value['name'] }}").unwrap().clone();{% endif %}
+    {% endfor %}
+        let output = Arc::new(Mutex::new(Vec::new()));
+        let result = Arc::clone(&output);
+
+        let _ = timely::execute_from_args(std::env::args(), move |worker| {
+        {% for key,value in sources.items() %}
+            let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['schema'] %}{{ element }}{% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
+        {% endfor %}
+            worker.dataflow(|scope| {
+            {% for node_code in flow_code %}
+                {{ node_code }}{% endfor %}
+                let result = Arc::clone(&result); 
+                {{ output_node_str }}.inspect(move |x| {
+                    let cloned_x = x.clone();
+                    result.lock().unwrap().push(tuple_to_vec_string!(
+                        {% if output_vars_count == 1%}
+                            cloned_x.0
+                        {% else %}
+                            {% for var in range(output_vars_count) %}
+                            cloned_x.0.{{ var }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        {% endif %}
+                    ));
+                });
+            });
+            {% for key,value in sources.items() %}
+            {% if value["op"] == "get_rel" %}
+                for vec in &collection_{{value['name']}} {
+                    input_{{value['name']}}.insert(({% for element in value['schema'] %} vec[{{loop.index0}}].parse::<{{element}}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
+                }
+            {% elif value["op"] == "get_const" %}
+                input_{{value['name']}}.insert(({% for element in value['consts'] %}{% if value['schema'][loop.index0] == "String"%}{{ element | tojson }}{%else%}"{{ element }}"{% endif %}.parse::<{{ value['schema'][loop.index0] }}>().unwrap(){% if not loop.last %}, {% endif %}{% endfor %}));
+            {% endif %}
+            {% endfor %}
+        });
+        return output.lock().unwrap().clone();
+}
