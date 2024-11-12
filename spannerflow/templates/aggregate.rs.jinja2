@@ -1,0 +1,10 @@
+let {{output_node}} = {{prev_node}}.map(|{{in_schema}}| ({{groupby_schema}}, {{agg_schema}}))
+            .reduce(|key, input, output| {
+                {% for decl in agg_decleration %}{{decl}}
+                {% endfor %}
+                for (val, cnt) in input.iter() {
+                    {% for agg in agg_list %}
+                        {{agg}}{% endfor %}
+                }
+                output.push(({{output_tuple}},1))
+            }).map(|(key, val)| ({% if groupby_len == 1 %}key, {% else %}{% for i in range(groupby_len) %}key.{{i}}, {% endfor %}{% endif %}{% if agg_len == 1 %}val{% if agg_by_index[0]['agg_func'] == "avg" %}.0 as f64 / val.1 as f64{%endif%}{% else %}{% for i in range(agg_len) %}val.{{i}}{% if agg_by_index[i]['agg_func'] == "avg" %}.0 as f64 / val.{{i}}.1 as f64{%endif%}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}));
