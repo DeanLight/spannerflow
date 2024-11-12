@@ -23,19 +23,19 @@ lazy_static::lazy_static! {
     static ref COLLECTIONS: Mutex<HashMap<String, Vec<Vec<String>>>> = Mutex::new(HashMap::new());
     static ref SCHEMAS: Mutex<HashMap<String, Vec<dataflow::DataType>>> = Mutex::new(HashMap::new());
     // change id to string, value need to be Arc<string>
-    static ref DOCUMENTS: sync::Mutex<HashMap<String, sync::Arc<String>>> = sync::Mutex::new(HashMap::new());
+    static ref DOCUMENTS: sync::Mutex<HashMap<String, sync::Arc<str>>> = sync::Mutex::new(HashMap::new());
 }
 
 #[no_mangle]
 // change id to string, change to dylib - change to get/add: if exists return pointer if not, create one.
-pub fn add_document(id: String, doc: sync::Arc<String>) {
+pub fn add_document(id: String, doc: sync::Arc<str>) {
     let mut documents = DOCUMENTS.lock().unwrap();
     documents.insert(id, doc);
 }
 
 #[no_mangle]
 // change to get_span - input id, start, end- return copy of substring of document. expose this to the API
-pub fn get_document(id: String) -> Option<sync::Arc<String>> {
+pub fn get_document(id: String) -> Option<sync::Arc<str>> {
     let documents = DOCUMENTS.lock().unwrap();
     match documents.get(&id) {
         Some(doc) => Some(sync::Arc::clone(doc)),
