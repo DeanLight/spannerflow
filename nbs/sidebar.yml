@@ -1,0 +1,11 @@
+website:
+  sidebar:
+    contents:
+      - index.ipynb
+      - 00_config.ipynb
+      - 15_span.ipynb
+      - 20_installations.ipynb
+      - 30_graph_utils.ipynb
+      - 40_grpc_server.ipynb
+      - 50_rust_dataflow.ipynb
+      - 60_engine.ipynb
