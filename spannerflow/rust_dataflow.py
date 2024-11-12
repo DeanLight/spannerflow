@@ -42,6 +42,7 @@ DATAFLOW_TO_RUST_TYPES = {
     "DATA_TYPE_FLOAT": "OrderedFloat<f32>",
     "DATA_TYPE_BOOL": "bool",
     "DATA_TYPE_INT64": "i64",
+    "DATA_TYPE_SPAN": "Span",
 }
 
 PYTHON_TO_DATAFLOW_TYPES = {

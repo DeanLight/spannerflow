@@ -11,6 +11,7 @@ from typing import Any, Callable, Generator
 import grpc
 
 from .dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
+from .span import Span
 
 # %% ../nbs/40_grpc_server.ipynb 4
 class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
@@ -130,10 +131,15 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
             for r in output:
                 if not isinstance(r, (tuple, list)):
                     r = (r,)
-                response_row = [
-                    (str(cell) if func_out_schema[i] is not bool else str(cell).lower())
-                    for i, cell in enumerate(r)
-                ]
+                response_row = []
+                for i, cell in enumerate(r):
+                    if func_out_schema[i] is bool:
+                        response_row.append(str(cell).lower())
+                    elif func_out_schema[i] is Span:
+                        response_row.append(repr(cell))
+                    else:
+                        response_row.append(str(cell))
+
                 response = dataflow_pb2.RunIEFunctionResponse(  # type: ignore
                     row=response_row
                 )
