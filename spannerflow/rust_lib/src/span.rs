@@ -1,15 +1,15 @@
 use sha1::{Sha1, Digest};
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use std::os::raw::c_char;
+use std::sync;
+use std::str::FromStr;
 use hex;
 use regex::Regex;
 use std::sync::Arc;
 
 extern "C" {
-    fn add_document(id: String, doc: String);
-    fn delete_document(id: String);
-    fn get_document(id: String) -> Arc<String>;
+    fn add_document(id: String, doc: sync::Arc<String>);
+    fn get_document(id: String) -> Option<sync::Arc<String>>;
 }
 
 fn small_hash(txt: &str, length: usize) -> String {
@@ -19,6 +19,11 @@ fn small_hash(txt: &str, length: usize) -> String {
     hex::encode(results)[..length].to_string()
 }
 
+#[derive(Debug)]
+pub enum SpanParseError {
+    InvalidFormat,
+    ParseIntError,
+}
 
 /// A struct that represents a span of text in a document.
 #[derive(Clone, Serialize, Deserialize, Hash)]
@@ -97,16 +102,40 @@ impl Span {
     }
 }
 
-/* 
-impl From<&str> for Span {
-    fn from(s: &str) -> Span {
+impl FromStr for Span {
+    type Err = SpanParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err>  {
+        let re = Regex::new(r#"\[@(\w+),(\d+),(\d+)\) "(.+)""#).unwrap();
+        if let Some(caps) = re.captures(s) {
+            let name = caps.get(1).unwrap().as_str().to_string();
+            let start = caps.get(2).unwrap().as_str().parse::<usize>().unwrap();
+            let end = caps.get(3).unwrap().as_str().parse::<usize>().unwrap();
+            let text = caps.get(4).unwrap().as_str().to_string();
+            println!("name: {}, start: {}, end: {} text: {}", name.clone(), start, end, text);
+            // unsafe {let document = get_document(name.clone());}
+            // match document {
+            //     Some(doc) => {
+            //         Span::new(&doc, start, end, name)
+            //     },
+            //     None => {
+            //         let doc = Arc::new(text.clone());
+            //         unsafe {add_document(name.clone(), text.clone().into());}
+            //         Span::new(&doc, start, end, name)
+            //     }
+            // }
+            Ok(Span::new(&text, start, end, name))
+        }
+        else {
+            eprintln!("Invalid format for span: {}", s);
+            Err(SpanParseError::InvalidFormat)
+        }
         // regex extraction of span paramters.
         // check if documentid exists in documet registry
         // if not add document to registry
         // return span with arc<string> to the document      
     }
-} 
-*/
+}
 
 impl std::fmt::Debug for Span{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
