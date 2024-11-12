@@ -327,7 +327,7 @@ def get_groupby_code(
     prev_nodes = list(graph.pred[node])
     prev_node_str = get_node_str(prev_nodes[0], anchor=anchor, in_iterate=in_iterate)
     node_str = get_node_str(node, anchor=anchor, in_iterate=in_iterate)
-    agg = gr_node["agg"]
+    agg = gr_node["agg_names"]
     schema = update_repeatable_cols_in_schema(gr_node["schema"])
     groupby_cols = [schema[i] for i, agg_func in enumerate(agg) if agg_func is None]
     nodes_schema_types_dict = code_metadata["nodes_schema_types_dict"]
@@ -378,8 +378,6 @@ def get_groupby_code(
                 agg_code.append(f"{agg_var}.1 += *cnt as i32;")
             case _:
                 # TODO: Fix python agg function
-                print(gr_node)
-                print(groupby_cols)
                 remote_aggregation_template = code_metadata[
                     "template_env"
                 ].get_template("remote_aggregate.jinja2")
@@ -387,7 +385,7 @@ def get_groupby_code(
                     output_node=node_str,
                     prev_node=prev_node_str,
                     grpc_address=code_metadata["grpc_address"],
-                    function_name=agg_func["agg_func"].__name__,
+                    function_name=agg_func["agg_func"],
                     in_schema=get_col_schema(
                         gr_node["schema"][: len(gr_node["schema"])]
                     ),
@@ -558,7 +556,7 @@ def prepare_node(
             nodes_schema_types_dict[node] = schema_types
         case "groupby":
             schema_types = []
-            for index, agg in enumerate(gr_node["agg"]):
+            for index, agg in enumerate(gr_node["agg_names"]):
                 if agg is None:
                     schema_types.append(
                         nodes_schema_types_dict[preds[0]["node_name"]][index]
