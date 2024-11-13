@@ -380,7 +380,7 @@ def get_groupby_code(
                 # TODO: Fix python agg function
                 remote_aggregation_template = code_metadata[
                     "template_env"
-                ].get_template("remote_aggregate.jinja2")
+                ].get_template("remote_aggregate.rs.jinja2")
                 code = remote_aggregation_template.render(
                     output_node=node_str,
                     prev_node=prev_node_str,
@@ -400,6 +400,7 @@ def get_groupby_code(
         output_node=node_str,
         prev_node=prev_node_str,
         in_schema=get_col_schema(schema),
+        mid_schema=get_col_schema(groupby_cols + agg_cols),
         groupby_schema=get_col_schema(groupby_cols),
         groupby_len=len(groupby_cols),
         agg_len=len(agg_cols),
