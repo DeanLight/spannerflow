@@ -82,7 +82,7 @@ fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool 
             }
             dataflow::DataType::Span => {
                 // TODO: Implement Span validation
-                return false;
+                return true;
             }
             dataflow::DataType::Custom => {
                 return true;
