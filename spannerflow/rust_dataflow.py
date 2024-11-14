@@ -427,6 +427,7 @@ def get_ie_map_code(
     nodes_schema_types_dict = code_metadata["nodes_schema_types_dict"]
     gr_node: dict = graph.nodes[node]
     in_arity: int = gr_node["in_arity"]
+    out_arity: int = gr_node["out_arity"]
     in_schema = gr_node["schema"][:in_arity]
     in_type_schema: list = nodes_schema_types_dict[node][:in_arity]
     out_schema = gr_node["schema"][in_arity:]
@@ -465,6 +466,8 @@ def get_ie_map_code(
                 ),
                 out_schema_len=len(gr_node["out_schema"]),
                 in_schema_len=len(gr_node["in_schema"]),
+                in_arity=in_arity,
+                out_arity=out_arity,
                 out_schema_types=nodes_schema_types_dict[node],
                 DATAFLOW_TO_RUST_TYPES=DATAFLOW_TO_RUST_TYPES,
             )

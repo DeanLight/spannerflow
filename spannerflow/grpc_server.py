@@ -45,7 +45,6 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                 # Extract the function_name from the first request
                 function_name = request.function_name
                 func_tuple = self._agg_functions.get(function_name)
-                print(func_tuple)
 
                 if func_tuple is None:
                     context.set_details(f"Agg Function '{function_name}' not found.")
@@ -69,9 +68,7 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return
 
-        print(rows)
         res = func(rows)
-        print(res)
 
         if len(func_out_schema) > 1:
             response_row = [
@@ -94,13 +91,15 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
         func = None
         rows = []
         for request in request_iterator:
-            if request.HasField("function_name"):
+            if request.HasField("function"):
                 if function_name is not None:
-                    context.set_details("Function name already provided.")
+                    context.set_details("Function data already provided.")
                     context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                     return
                 # Extract the function_name from the first request
-                function_name = request.function_name
+                function_name = request.function.function_name
+                in_arity = request.function.in_arity
+                out_arity = request.function.out_arity
                 func_tuple = self._ie_functions.get(function_name)
 
                 if func_tuple is None:
@@ -109,11 +108,15 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                     return  # Return early after setting the error
                 func = func_tuple[1]
                 func_in_scehma = func_tuple[2]
+                if callable(func_in_scehma):
+                    func_in_scehma = func_in_scehma(in_arity)
                 func_out_schema = func_tuple[3]
+                if callable(func_out_schema):
+                    func_out_schema = func_out_schema(out_arity)
 
             elif request.HasField("row"):
                 if func is None:
-                    context.set_details("Function name must be provided before rows.")
+                    context.set_details("Function data must be provided before rows.")
                     context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                     return  # Function name must come first
                 str_arguments = [str(cell) for cell in request.row.row]
@@ -122,7 +125,7 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                 )
 
         if function_name is None or func is None:
-            context.set_details("No function name provided.")
+            context.set_details("No function data provided.")
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return
 

@@ -21,9 +21,15 @@ message RunAggFunctionResponse {
 
 message RunIEFunctionRequest {
     oneof message_type {
-        string function_name = 1;
+        FunctionRequest function = 1;
         RowRequest row = 2;
     }
+}
+
+message FunctionRequest {
+    string function_name = 1;
+    uint32 in_arity = 2;
+    uint32 out_arity = 3;
 }
 
 message RowRequest {

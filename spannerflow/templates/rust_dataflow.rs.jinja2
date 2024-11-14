@@ -48,7 +48,7 @@ macro_rules! tuple_to_vec_string {
     };
 }
 
-fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>> ) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
+fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>>, in_arity: u32, out_arity: u32) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>> {
     let rt = Runtime::new()?;
 
     rt.block_on(async {
@@ -57,7 +57,11 @@ fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>
 
         let mut requests: Vec<RunIeFunctionRequest> = vec![
             RunIeFunctionRequest {
-                message_type: Some(run_ie_function_request::MessageType::FunctionName(function_name)),
+                message_type: Some(run_ie_function_request::MessageType::Function(FunctionRequest {
+                    function_name: function_name.clone(),
+                    in_arity: in_arity,
+                    out_arity: out_arity,
+                })),
             },
         ];
         for row in data {
