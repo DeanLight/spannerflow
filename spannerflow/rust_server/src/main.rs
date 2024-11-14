@@ -411,8 +411,17 @@ impl DataflowService for MyDataflowService {
         
         let mut collections = COLLECTIONS.lock().await;
         let mut schemas = SCHEMAS.lock().await;
-        if collections.contains_key(&req.collection_name) || schemas.contains_key(&req.collection_name) {
-            return Err(Status::already_exists("Collection already exists"));
+        if collections.contains_key(&req.collection_name) && schemas.contains_key(&req.collection_name){
+            let schema = schemas.get(&req.collection_name).unwrap();
+            if schema.len() != req.schema.len() {
+                return Err(Status::invalid_argument("Schema length mismatch"));
+            }
+            for (data_type, value) in schema.iter().zip(req.schema.iter()) {
+                if *data_type != dataflow::DataType::try_from(*value).unwrap() {
+                    return Err(Status::invalid_argument("Schema mismatch"));
+                }
+            }
+            return Ok(Response::new(reply));
         }
         
         collections.insert(req.collection_name.clone(), vec![]);
