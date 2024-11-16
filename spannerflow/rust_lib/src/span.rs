@@ -6,6 +6,7 @@ use std::str::FromStr;
 use hex;
 use regex::Regex;
 use std::sync::Arc;
+use std::path::Path;
 
 extern "C" {
     fn add_document(id: String, doc: sync::Arc<String>);
@@ -28,7 +29,7 @@ pub enum SpanParseError {
 /// A struct that represents a span of text in a document.
 #[derive(Clone, Serialize, Deserialize, Hash)]
 pub struct Span {
-    doc: Arc<str>,
+    doc: Arc<String>,
     start: usize,
     end: usize,
     name: String,
@@ -36,22 +37,30 @@ pub struct Span {
 
 impl Span {
     /// 
-    pub fn new(doc: &str, start: usize, end: usize, name: String) -> Span {
+    pub fn new(doc: Arc<String>, start: usize, end: usize, name: String) -> Span {
         let mut span_name = name;
         if span_name.is_empty() {
             span_name = small_hash(&doc[start..end], 6);
         }
         Span {
-            doc: Arc::from(doc),
+            doc,
             start,
             end,
             name: span_name,
         }
     }
 
-    fn from_path(path: &str, start: usize, end: usize) -> Span {
+    pub fn from_path(path: &str) -> Span {
         let doc_string = std::fs::read_to_string(path).unwrap();
-        Span::new(&doc_string, start, end, "".to_string())
+        let file_name = std::path::Path::new(path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let end = doc_string.len();
+        let doc = Arc::new(doc_string);
+        Span::new(doc, 0, end, file_name)
     }
 
     fn slice(&self, start: usize, end: usize) -> Span {
@@ -77,11 +86,11 @@ impl Span {
         
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.end - self.start
     }
     
-    pub fn get_doc(&self) -> Arc<str> {
+    pub fn get_doc(&self) -> Arc<String> {
         self.doc.clone()
     }
 
@@ -125,7 +134,8 @@ impl FromStr for Span {
             //         Span::new(&doc, start, end, name)
             //     }
             // }
-            Ok(Span::new(&text, start, end, name))
+            let doc = Arc::new(text.clone());
+            Ok(Span::new(doc.clone(), start, end, name))
         }
         else {
             eprintln!("Invalid format for span: {}", s);
@@ -176,4 +186,127 @@ impl Ord for Span {
 /// Create a new span from an existing span
 pub fn from_span(span: &Span, start: usize, end: usize) -> Span {
     span.slice(start, end)
+}
+
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+
+    #[test]
+    fn test_span_new() {
+        let doc = Arc::new("Hello, world!".to_string());
+        let span = Span::new(doc.clone(), 0, 5, "greeting".to_string());
+        assert_eq!(span.get_doc(), doc);
+        assert_eq!(span.get_start(), 0);
+        assert_eq!(span.get_end(), 5);
+        assert_eq!(span.get_name(), "greeting");
+        assert_eq!(span.as_str(), "Hello");
+    }
+
+    #[test]
+    fn test_span_slice() {
+        let doc = Arc::new("Hello, world!".to_string());
+        let span = Span::new(doc.clone(), 0, 12, "greeting".to_string());
+        let sliced_span = span.slice(7, 12);
+        assert_eq!(sliced_span.get_doc(), doc);
+        assert_eq!(sliced_span.get_start(), 7);
+        assert_eq!(sliced_span.get_end(), 12);
+        assert_eq!(sliced_span.get_name(), "greeting");
+        assert_eq!(sliced_span.as_str(), "world");
+    }
+
+    #[test]
+    #[should_panic(expected = "Start index greater than end index")]
+    fn test_span_slice_invalid_indices() {
+        let doc = Arc::new("Hello, world!".to_string());
+        let span = Span::new(doc.clone(), 0, 12, "greeting".to_string());
+        span.slice(12, 7);
+    }
+
+    #[test]
+    fn test_span_len() {
+        let doc = Arc::new("Hello, world!".to_string());
+        let span = Span::new(doc.clone(), 0, 5, "greeting".to_string());
+        assert_eq!(span.len(), 5);
+    }
+
+    #[test]
+    fn test_span_from_str() {
+        let span_str = r#"[@greeting,0,5) "Hello""#;
+        let span = Span::from_str(span_str).unwrap();
+        assert_eq!(span.get_name(), "greeting");
+        assert_eq!(span.get_start(), 0);
+        assert_eq!(span.get_end(), 5);
+        assert_eq!(span.as_str(), "Hello");
+    }
+
+    #[test]
+    fn test_span_display() {
+        let doc = Arc::new("Hello, world!".to_string());
+        let span = Span::new(doc.clone(), 0, 5, "greeting".to_string());
+        assert_eq!(format!("{}", span), r#"[@greeting,0,5) "Hello""#);
+    }
+
+    #[test]
+    fn test_span_debug() {
+        let doc = Arc::new("Hello, world!".to_string());
+        let span = Span::new(doc.clone(), 0, 5, "greeting".to_string());
+        assert_eq!(format!("{:?}", span), r#"[@greeting,0,5) "Hello""#);
+    }
+
+    #[test]
+    fn test_span_partial_eq() {
+        let doc = Arc::new("Hello, world!".to_string());
+        let span1 = Span::new(doc.clone(), 0, 5, "greeting".to_string());
+        let span2 = Span::new(doc.clone(), 0, 5, "greeting".to_string());
+        assert_eq!(span1, span2);
+    }
+
+    #[test]
+    fn test_span_ord() {
+        let doc = Arc::new("Hello, world!".to_string());
+        let span1 = Span::new(doc.clone(), 0, 5, "greeting".to_string());
+        let span2 = Span::new(doc.clone(), 6, 12, "world".to_string());
+        assert!(span1 < span2);
+    }
+
+    #[test]
+    fn test_from_path() {
+        let tmp_file_path = "/tmp/test_document.txt";
+        let mut file = File::create(tmp_file_path).unwrap();
+        writeln!(file, "Hello, world!").unwrap();
+
+        let span = Span::from_path(tmp_file_path);
+        assert_eq!(span.get_name(), "test_document.txt");
+        assert_eq!(span.get_start(), 0);
+        assert_eq!(span.get_end(), 14);
+
+        let sub_span = span.slice(7, 12);
+        assert_eq!(sub_span.get_name(), "test_document.txt");
+        assert_eq!(sub_span.get_start(), 7);
+        
+        
+        std::fs::remove_file(tmp_file_path).unwrap();
+    }
+    
+    // Enable this test after implementing document registry
+    //#[test]
+    //fn test_span_from_str_with_new_document() {
+    //    let span_str = r#"[@doc1,0,13) "Hello, world!""#;
+    //    let span = Span::from_str(span_str).unwrap();
+    //    assert_eq!(span.get_name(), "doc1");
+    //    assert_eq!(span.get_start(), 0);
+    //    assert_eq!(span.get_end(), 13);
+    //    assert_eq!(span.as_str(), "Hello, world!");
+
+    //    let sub_span_str = r#"[@doc1,7,12) "world""#;
+    //    let sub_span = Span::from_str(sub_span_str).unwrap();
+    //    assert_eq!(sub_span.get_name(), "doc1");
+    //    assert_eq!(sub_span.get_start(), 7);
+    //    assert_eq!(sub_span.get_end(), 12);
+    //    assert_eq!(sub_span.as_str(), "world");
+    //}
+
+    
 }

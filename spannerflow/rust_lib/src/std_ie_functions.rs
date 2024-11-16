@@ -1,5 +1,6 @@
 use regex::Regex;
 use crate::span::{from_span, Span};
+use std::sync::Arc;
 
 fn rgx(pattern: &str, text: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
     let re = Regex::new(pattern).unwrap();
@@ -23,7 +24,10 @@ fn rgx(pattern: &str, text: &str, span: &Span) -> impl Iterator<Item = Vec<Span>
 }
 
 pub fn rgx_str_span(pattern: &str, text: &str) -> impl Iterator<Item = Vec<Span>> {
-    rgx(pattern, text, &Span::new(text, 0, text.len(), "".to_string()))
+    let doc: Arc::<String> = Arc::new(text.to_string());
+    let span = Span::new(doc.clone(), 0, text.len(), "".to_string());
+    // Add to document registry (Optional remove function and only allow rgx spans to spans)
+    rgx(pattern, text, &span)
 }
 
 pub fn rgx_span_span(pattern: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
@@ -58,9 +62,9 @@ pub fn rgx_is_mtach_span(delim: &str, span: &Span)-> impl Iterator<Item= bool>{
 fn rgx_split(delim: &str, text: &str, intial_tag: &str, base_span: &Span)-> impl Iterator<Item= (Span, Span)>{
     let init_span: Span;
     if intial_tag.is_empty(){
-        init_span = Span::new("Start Tag", 0, "Start Tag".len(), "".to_string());
+        init_span = Span::new(Arc::<String>::new("Start Tag".to_string()), 0, "Start Tag".len(), "".to_string());
     } else {
-        init_span = Span::new(intial_tag, 0, intial_tag.len(), "".to_string());
+        init_span = Span::new(Arc::<String>::new(intial_tag.to_string()), 0, intial_tag.len(), "".to_string());
     }
 
     let mut matches = rgx_str_span(delim, text);
@@ -84,7 +88,10 @@ fn rgx_split(delim: &str, text: &str, intial_tag: &str, base_span: &Span)-> impl
 }
 
 pub fn rgx_split_str(delim: &str, text: &str, intial_tag: &str)-> impl Iterator<Item= (Span, Span)>{
-    let base_span = Span::new(text, 0, text.len(), "".to_string());
+    let doc = Arc::new(text.to_string());
+    let base_span = Span::new(doc.clone(), 0, text.len(), "".to_string());
+    // Add to document registry (Optional remove function and only allow spliting spans)
+
     rgx_split(delim, text, intial_tag, &base_span)
 }
 
@@ -92,15 +99,23 @@ pub fn rgx_split_span(delim: &str, span: &Span, intial_tag: &str)-> impl Iterato
     rgx_split(delim, &span.get_doc(), intial_tag, span)
 }
 
+pub fn read_span(text_path: &str) -> impl Iterator<Item = Span> {
+    std::iter::once(Span::from_path(text_path))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::span::Span;
-    
+    use std::fs::File;
+    use std::io::Write;
+    use std::fs;
+
     #[test]
     fn test_rgx_str_span(){
         let s = "aaaaa@bbbbbbaa@bb";
-        let span = Span::new(s, 0, s.len(), "".to_string());
+        let sa = Arc::new(s.to_string());
+        let span = Span::new(sa, 0, s.len(), "".to_string());
         
         assert_eq!(rgx_str_span("(?P<c>(?P<a>a*)@(?P<b>b*))", s).collect::<Vec<_>>(), 
         vec![
@@ -118,7 +133,7 @@ mod tests {
     #[test]
     fn test_rgx_span_span(){
         let s = "aaaaa@bbbbbbaa@bb";
-        let span = Span::new(s, 0, s.len(), "".to_string());
+        let span = Span::new(Arc::new(s.to_string()), 0, s.len(), "".to_string());
         
         assert_eq!(rgx_span_span("(?P<c>(?P<a>a*)@(?P<b>b*))", &span).collect::<Vec<_>>(), 
         vec![
@@ -136,8 +151,8 @@ mod tests {
     fn test_span_contained(){
         let s1: &str = "hello darkness my old friend";
         let s2: &str = "I come to talk to you again";
-        let doc1 : Span = Span::new(s1, 0, s1.len(), "doc1".to_string());
-        let doc2 : Span = Span::new(s2, 0, s2.len(), "doc2".to_string());
+        let doc1 : Span = Span::new(Arc::<String>::new(s1.to_string()), 0, s1.len(), "doc1".to_string());
+        let doc2 : Span = Span::new(Arc::<String>::new(s2.to_string()), 0, s2.len(), "doc2".to_string());
         let span1: Span = from_span(&doc1, 1, 10);
         let span2: Span = from_span(&doc1, 0, 11);
         let span3: Span = from_span(&doc1, 2, 12);
@@ -153,8 +168,8 @@ mod tests {
     fn test_deconstruct_span(){
         let s1: &str = "hello darkness my old friend";
         let s2: &str = "I come to talk to you again";
-        let doc1 : Span = Span::new(s1, 0, s1.len(), "doc1".to_string());
-        let doc2 : Span = Span::new(s2, 0, s2.len(), "doc2".to_string());
+        let doc1 : Span = Span::new(Arc::<String>::new(s1.to_string()), 0, s1.len(), "doc1".to_string());
+        let doc2 : Span = Span::new(Arc::<String>::new(s2.to_string()), 0, s2.len(), "doc2".to_string());
         let span1: Span = from_span(&doc1, 1, 10);
         let span2: Span = from_span(&doc1, 0, 11);
         let span3: Span = from_span(&doc1, 2, 12);
@@ -175,7 +190,7 @@ mod tests {
     #[test]
     fn test_rgx_is_match_span(){
         let document = "dddaaaaa@bbbbbbaa@bb";
-        let span_document= Span::new(document, 0, document.len(), "doc1".to_string());
+        let span_document= Span::new(Arc::<String>::new(document.to_string()), 0, document.len(), "doc1".to_string());
         assert_eq!(rgx_is_mtach_span("(a*)@(b*)", &span_document).collect::<Vec<_>>(), vec![true]);
         assert_eq!(rgx_is_mtach_span("(a*)@(e+)", &span_document).collect::<Vec<_>>(), vec![false]);
     }
@@ -203,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_rgx_split_span() {
-        let span1 = Span::new("bbbannnnxdddaca", 0, 15, "".to_string());
+        let span1 = Span::new(Arc::new("bbbannnnxdddaca".to_string()), 0, 15, "".to_string());
         let result_1 = rgx_split_span("a|x", &span1, "Start Tag").map(|(s1, s2)| {
             (s1.as_str().to_string(), s2.as_str().to_string())
         }).collect::<Vec<_>>();
@@ -213,7 +228,7 @@ mod tests {
             ("a".to_string(), "c".to_string()),
             ("a".to_string(), "".to_string())]);
             
-        let span2 =  Span::new("abbbannnnxdddaca", 0, 16, "".to_string());
+        let span2 =  Span::new(Arc::new("abbbannnnxdddaca".to_string()), 0, 16, "".to_string());
         let result_2 = rgx_split_span("a|x", &span2, "Start Tag").map(|(s1, s2)| {
             (s1.as_str().to_string(), s2.as_str().to_string())
         }).collect::<Vec<_>>();
@@ -222,6 +237,32 @@ mod tests {
             ("x".to_string(), "ddd".to_string()),
             ("a".to_string(), "c".to_string()),
             ("a".to_string(), "".to_string())]);
+    }
+
+    #[test]
+    fn test_read_span_with_file_creation() {
+        let test_file_path = "tmp/test.txt";
+        let test_content = "This is a test file content.";
+
+        // Create the file
+        let mut file = File::create(test_file_path).expect("Unable to create test file");
+        file.write_all(test_content.as_bytes()).expect("Unable to write to test file");
+
+        // Run the test
+        let span = read_span(test_file_path);
+        for s in span {
+            let result = rgx_span_span(r"(\w+)", &s);
+            assert_eq!(result.collect::<Vec<_>>(), vec![
+                vec![from_span(&s, 0, 4)],
+                vec![from_span(&s, 5, 7)],
+                vec![from_span(&s, 8, 9)],
+                vec![from_span(&s, 10, 14)],
+                vec![from_span(&s, 15, 19)],
+                vec![from_span(&s, 20, 27)]]);
+        }
+
+        // Delete the file
+        fs::remove_file(test_file_path).expect("Unable to delete test file");
     }
 
 
