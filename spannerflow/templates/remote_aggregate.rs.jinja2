@@ -1,10 +1,10 @@
 let {{ output_node }} = {{ prev_node}}
-                            .map(|{{ in_schema }}| (0, {{ in_schema }}))
+                            .map(|{{in_schema}}| ({{groupby_schema}}, {{agg_schema}}))
                             .reduce(|key, input, output| {
                                 let mut agg_input = vec![];
                                 for (val, cnt) in input.iter() {
                                     agg_input.push(tuple_to_vec_string!( 
-                                    {% if in_schema_len > 1 %}{% for index in range(in_schema_len) %}val.{{ index }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                    {% if groupby_len > 1 %}{% for index in range(groupby_len) %}val.{{ index }}{% if not loop.last %}, {% endif %}{% endfor %}
                                     {% else %}val{% endif %}
                                     ));
                                 }
@@ -19,4 +19,4 @@ let {{ output_node }} = {{ prev_node}}
                                     }
                                 }                            
                             })
-                            .map(|(key, val)| ({% for index in range(out_schema_len) %}val[{{ index }}].clone().parse::<{{DATAFLOW_TO_RUST_TYPES[out_schema_types[index]]}}>().unwrap(){% if not loop.last %}, {% endif%}{% endfor %} ));
+                            .map(|(key, val)| ({% if groupby_len == 1 %}key, {% else %}{% for i in range(groupby_len) %}key.{{i}}, {% endfor %}{% endif %}{% for index in range(agg_len) %}val[{{ index }}].clone().parse::<{{DATAFLOW_TO_RUST_TYPES[agg_by_index[index]['dataflow_type']]}}>().unwrap(){% if not loop.last %}, {% endif%}{% endfor %} ));

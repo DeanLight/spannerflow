@@ -332,7 +332,10 @@ def get_groupby_code(
     groupby_cols = [schema[i] for i, agg_func in enumerate(agg) if agg_func is None]
     nodes_schema_types_dict = code_metadata["nodes_schema_types_dict"]
     agg_by_cols = {
-        schema[i]: {"agg_func": agg_func}
+        schema[i]: {
+            "agg_func": agg_func,
+            "dataflow_type": nodes_schema_types_dict[node][i],
+        }
         for i, agg_func in enumerate(agg)
         if agg_func is not None
     }
@@ -343,6 +346,7 @@ def get_groupby_code(
         agg_by_index[agg_func["index"]] = {
             "agg_func": agg_func["agg_func"],
             "col_name": key,
+            "dataflow_type": agg_func["dataflow_type"],
         }
     multi_agg = False
     if len(agg_by_cols.values()) > 1:
@@ -377,7 +381,6 @@ def get_groupby_code(
                 agg_code.append(f"{agg_var}.0 += {val} * (*cnt as i32);")
                 agg_code.append(f"{agg_var}.1 += *cnt as i32;")
             case _:
-                # TODO: Fix python agg function
                 remote_aggregation_template = code_metadata[
                     "template_env"
                 ].get_template("remote_aggregate.rs.jinja2")
@@ -393,6 +396,11 @@ def get_groupby_code(
                     in_schema_len=len(gr_node["schema"]),
                     out_schema_types=nodes_schema_types_dict[node],
                     DATAFLOW_TO_RUST_TYPES=DATAFLOW_TO_RUST_TYPES,
+                    groupby_schema=get_col_schema(groupby_cols),
+                    groupby_len=len(groupby_cols),
+                    agg_len=len(agg_cols),
+                    agg_schema=get_col_schema(agg_cols),
+                    agg_by_index=agg_by_index,
                 )
                 return code
     agg_template = code_metadata["template_env"].get_template("aggregate.rs.jinja2")
