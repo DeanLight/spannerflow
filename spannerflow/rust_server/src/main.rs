@@ -23,19 +23,18 @@ lazy_static::lazy_static! {
     static ref COLLECTIONS: Mutex<HashMap<String, Vec<Vec<String>>>> = Mutex::new(HashMap::new());
     static ref SCHEMAS: Mutex<HashMap<String, Vec<dataflow::DataType>>> = Mutex::new(HashMap::new());
     // change id to string, value need to be Arc<string>
-    static ref DOCUMENTS: sync::Mutex<HashMap<String, sync::Arc<str>>> = sync::Mutex::new(HashMap::new());
+    static ref DOCUMENTS: sync::Mutex<HashMap<String, sync::Arc<String>>> = sync::Mutex::new(HashMap::new());
 }
 
-#[no_mangle]
 // change id to string, change to dylib - change to get/add: if exists return pointer if not, create one.
-pub fn add_document(id: String, doc: sync::Arc<str>) {
+#[no_mangle]
+pub extern "Rust" fn add_document(id: String, doc: sync::Arc<String>) {
     let mut documents = DOCUMENTS.lock().unwrap();
     documents.insert(id, doc);
 }
-
-#[no_mangle]
 // change to get_span - input id, start, end- return copy of substring of document. expose this to the API
-pub fn get_document(id: String) -> Option<sync::Arc<str>> {
+#[no_mangle]
+pub extern "Rust" fn get_document(id: String) -> Option<sync::Arc<String>> {
     let documents = DOCUMENTS.lock().unwrap();
     match documents.get(&id) {
         Some(doc) => Some(sync::Arc::clone(doc)),
@@ -516,7 +515,7 @@ async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<Str
             eprintln!("Failed to load library from path {}: {:?}", so_path, e);
             Status::not_found("Failed to load shared library")
         })?;
-        let function: Symbol<unsafe extern "C" fn(&HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>> = match lib.get(fn_name.as_bytes()) {
+        let function: Symbol<unsafe extern "Rust" fn(&HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>> = match lib.get(fn_name.as_bytes()) {
             Ok(func) => func,
             Err(e) => {
                 eprintln!("Failed to get function {}: {:?}", fn_name, e);

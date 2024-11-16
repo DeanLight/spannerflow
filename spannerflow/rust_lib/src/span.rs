@@ -8,7 +8,7 @@ use regex::Regex;
 use std::sync::Arc;
 use std::path::Path;
 
-extern "C" {
+extern "Rust" {
     fn add_document(id: String, doc: sync::Arc<String>);
     fn get_document(id: String) -> Option<sync::Arc<String>>;
 }
@@ -123,15 +123,17 @@ impl FromStr for Span {
             let text = caps.get(4).unwrap().as_str().to_string();
             println!("name: {}, start: {}, end: {} text: {}", name.clone(), start, end, text);
             // TODO: Add document registry
-            // unsafe {let document = get_document(name.clone());}
-            // match document {
-            //     Some(doc) => {
-            //         Span::new(&doc, start, end, name)
-            //     },
-            //     None => {
-            //         let doc = Arc::new(text.clone());
-            //         unsafe {add_document(name.clone(), text.clone().into());}
-            //         Span::new(&doc, start, end, name)
+            // unsafe {
+            //     let document = get_document(name.clone());
+            //     match document {
+            //         Some(doc) => {
+            //             return Ok(Span::new(doc, start, end, name));
+            //         },
+            //         None => {
+            //             let doc = Arc::new(text.clone());
+            //             add_document(name.clone(), text.clone().into());
+            //             return Ok(Span::new(doc, start, end, name));
+            //         }
             //     }
             // }
             let doc = Arc::new(text.clone());
