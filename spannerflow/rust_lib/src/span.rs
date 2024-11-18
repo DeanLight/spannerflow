@@ -7,11 +7,8 @@ use hex;
 use regex::Regex;
 use std::sync::Arc;
 use std::path::Path;
+use rust_span::{add_document, get_document};
 
-extern "Rust" {
-    fn add_document(id: String, doc: sync::Arc<String>);
-    fn get_document(id: String) -> Option<sync::Arc<String>>;
-}
 
 fn small_hash(txt: &str, length: usize) -> String {
     let mut hasher = Sha1::new();
@@ -123,19 +120,19 @@ impl FromStr for Span {
             let text = caps.get(4).unwrap().as_str().to_string();
             println!("name: {}, start: {}, end: {} text: {}", name.clone(), start, end, text);
             // TODO: Add document registry
-            // unsafe {
-            //     let document = get_document(name.clone());
-            //     match document {
-            //         Some(doc) => {
-            //             return Ok(Span::new(doc, start, end, name));
-            //         },
-            //         None => {
-            //             let doc = Arc::new(text.clone());
-            //             add_document(name.clone(), text.clone().into());
-            //             return Ok(Span::new(doc, start, end, name));
-            //         }
-            //     }
-            // }
+            unsafe {
+                let document = get_document(name.clone());
+                match document {
+                    Some(doc) => {
+                        return Ok(Span::new(doc, start, end, name));
+                    },
+                    None => {
+                        let doc = Arc::new(text.clone());
+                        add_document(name.clone(), text.clone().into());
+                        return Ok(Span::new(doc, start, end, name));
+                    }
+                }
+            }
             let doc = Arc::new(text.clone());
             Ok(Span::new(doc.clone(), start, end, name))
         }
@@ -293,22 +290,22 @@ mod tests {
     }
     
     // Enable this test after implementing document registry
-    //#[test]
-    //fn test_span_from_str_with_new_document() {
-    //    let span_str = r#"[@doc1,0,13) "Hello, world!""#;
-    //    let span = Span::from_str(span_str).unwrap();
-    //    assert_eq!(span.get_name(), "doc1");
-    //    assert_eq!(span.get_start(), 0);
-    //    assert_eq!(span.get_end(), 13);
-    //    assert_eq!(span.as_str(), "Hello, world!");
+    #[test]
+    fn test_span_from_str_with_new_document() {
+       let span_str = r#"[@doc1,0,13) "Hello, world!""#;
+       let span = Span::from_str(span_str).unwrap();
+       assert_eq!(span.get_name(), "doc1");
+       assert_eq!(span.get_start(), 0);
+       assert_eq!(span.get_end(), 13);
+       assert_eq!(span.as_str(), "Hello, world!");
 
-    //    let sub_span_str = r#"[@doc1,7,12) "world""#;
-    //    let sub_span = Span::from_str(sub_span_str).unwrap();
-    //    assert_eq!(sub_span.get_name(), "doc1");
-    //    assert_eq!(sub_span.get_start(), 7);
-    //    assert_eq!(sub_span.get_end(), 12);
-    //    assert_eq!(sub_span.as_str(), "world");
-    //}
+       let sub_span_str = r#"[@doc1,7,12) "world""#;
+       let sub_span = Span::from_str(sub_span_str).unwrap();
+       assert_eq!(sub_span.get_name(), "doc1");
+       assert_eq!(sub_span.get_start(), 7);
+       assert_eq!(sub_span.get_end(), 12);
+       assert_eq!(sub_span.as_str(), "world");
+    }
 
     
 }

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync;
 use std::env;
 use csv;
 
@@ -13,6 +12,8 @@ use tokio_stream::StreamExt;
 
 use dataflow::dataflow_service_server::{DataflowService, DataflowServiceServer};
 use dataflow::{*};
+extern crate rust_span;
+use rust_span::get_document;
 
 
 pub mod dataflow {
@@ -23,24 +24,7 @@ lazy_static::lazy_static! {
     static ref COLLECTIONS: Mutex<HashMap<String, Vec<Vec<String>>>> = Mutex::new(HashMap::new());
     static ref SCHEMAS: Mutex<HashMap<String, Vec<dataflow::DataType>>> = Mutex::new(HashMap::new());
     // change id to string, value need to be Arc<string>
-    static ref DOCUMENTS: sync::Mutex<HashMap<String, sync::Arc<String>>> = sync::Mutex::new(HashMap::new());
-}
-
-// change id to string, change to dylib - change to get/add: if exists return pointer if not, create one.
-#[no_mangle]
-pub extern "Rust" fn add_document(id: String, doc: sync::Arc<String>) {
-    let mut documents = DOCUMENTS.lock().unwrap();
-    documents.insert(id, doc);
-}
-// change to get_span - input id, start, end- return copy of substring of document. expose this to the API
-#[no_mangle]
-pub extern "Rust" fn get_document(id: String) -> Option<sync::Arc<String>> {
-    let documents = DOCUMENTS.lock().unwrap();
-    match documents.get(&id) {
-        Some(doc) => Some(sync::Arc::clone(doc)),
-        None => None,
-    }
-}
+}    
 
 #[derive(Debug, Default)]
 pub struct MyDataflowService {}
@@ -104,18 +88,20 @@ impl DataflowService for MyDataflowService {
     ) -> Result<Response<GetSpanResponse>, Status> {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
-        let documents = DOCUMENTS.lock().unwrap();
-        if let Some(doc) = documents.get(&req.id) {
-            if req.start > req.end || req.start >= doc.len() as u32 || req.end >= doc.len() as u32 {
-                return Err(Status::invalid_argument("Invalid start or end index"));
+        
+        unsafe {
+            if let Some(doc) = get_document(req.id) {
+                if req.start > req.end || req.start >= doc.len() as u32 || req.end >= doc.len() as u32 {
+                    return Err(Status::invalid_argument("Invalid start or end index"));
+                }
+                let span = doc[req.start as usize..req.end as usize].to_string();
+                let reply = GetSpanResponse {
+                    span: span,
+                };
+                Ok(Response::new(reply))
+            } else {
+                return Err(Status::not_found("Document not found"));
             }
-            let span = doc[req.start as usize..req.end as usize].to_string();
-            let reply = GetSpanResponse {
-                span: span,
-            };
-            Ok(Response::new(reply))
-        } else {
-            return Err(Status::not_found("Document not found"));
         }
     }
 
