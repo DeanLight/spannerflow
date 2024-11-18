@@ -1,0 +1,9 @@
+include settings.ini
+include LICENSE
+include CONTRIBUTING.md
+include README.md
+recursive-include spannerflow/templates *
+recursive-include spannerflow/rust_server *
+recursive-include spannerflow/rust_lib *
+recursive-exclude * __pycache__
+prune tests
