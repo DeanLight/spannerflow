@@ -14,7 +14,6 @@ import subprocess
 import threading
 import time
 from concurrent import futures
-from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Generator
 
@@ -110,15 +109,19 @@ class Engine:
     ):
         from spannerflow.rust_dataflow import RustDataflow
 
-        port_1, port_2 = self.find_server_ports()
-        self._config = Config(DATAFLOW_PORT=port_1, LISTEN_PORT=port_2)
         self._ie_functions = ie_functions
         self._agg_functions = agg_functions
-        self._rust_dataflow = RustDataflow(config=self._config, engine=self)  # type: ignore
         self._is_rust_server_running = False
         self._is_python_server_running = False
         self._rust_server_process: None | subprocess.Popen = None
         self._python_grpc_server: None | grpc.server = None
+
+        port_1, port_2 = self.find_server_ports()
+        self._config = Config(DATAFLOW_PORT=port_1, LISTEN_PORT=port_2)
+        self._rust_dataflow = RustDataflow(config=self._config, engine=self)  # type: ignore
+        self._run_rust_server_in_background()
+        self._run_python_server_in_background()
+        time.sleep(1)
 
     def find_server_ports(self) -> tuple[int, int]:
         port_1 = None
@@ -136,17 +139,6 @@ class Engine:
     def _is_port_available(self, port: int) -> bool:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             return sock.connect_ex(("localhost", port)) != 0
-
-    @staticmethod
-    def ensure_server_running(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            self._run_rust_server_in_background()
-            self._run_python_server_in_background()
-            time.sleep(1)
-            return func(self, *args, **kwargs)
-
-        return wrapper
 
     def close(self):
         self._stop_rust_server()
@@ -201,7 +193,6 @@ class Engine:
         self._rust_server_process.terminate()
         self._is_rust_server_running = False
 
-    @ensure_server_running
     def save_to_csv(
         self, collection_name: str, file_path: Path, delimiter: str = ","
     ) -> None:
@@ -214,7 +205,6 @@ class Engine:
             )
             stub.SaveToCSV(request)
 
-    @ensure_server_running
     def load_from_csv(
         self,
         collection_name: str,
@@ -232,7 +222,6 @@ class Engine:
             )
             stub.LoadFromCSV(request)
 
-    @ensure_server_running
     def add_row(self, collection_name: str, row: list[Any]) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -253,7 +242,6 @@ class Engine:
                 row=dataflow_pb2.RowRequest(row=serialize_row(schema, row))  # type: ignore
             )
 
-    @ensure_server_running
     def add_rows(self, collection_name: str, rows: list[list[Any]]) -> None:
         schema = self.get_collections()[collection_name]
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
@@ -263,7 +251,6 @@ class Engine:
             )
             stub.AddRows(request_generator)
 
-    @ensure_server_running
     def delete_row(self, collection_name: str, row: list[Any]) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -273,7 +260,6 @@ class Engine:
             )
             stub.DeleteRow(request)
 
-    @ensure_server_running
     def add_collection(
         self,
         collection_name: str,
@@ -286,7 +272,6 @@ class Engine:
             )
             stub.AddCollection(request)
 
-    @ensure_server_running
     def delete_collection(self, collection_name: str) -> None:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -295,7 +280,6 @@ class Engine:
             )
             stub.DeleteCollection(request)
 
-    @ensure_server_running
     def get_collections(self) -> dict[str, list[str]]:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -307,7 +291,6 @@ class Engine:
                 d["name"]: d["schema"] for d in MessageToDict(response)["collections"]
             }
 
-    @ensure_server_running
     def get_collection(self, collection_name) -> Generator[list[str], None, None]:
         schema = self.get_collections()[collection_name]
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
@@ -348,7 +331,6 @@ class Engine:
     def del_agg_function(self, name: str):
         del self._agg_functions[name]
 
-    @ensure_server_running
     def run_dataflow(
         self, reversed_graph: nx.DiGraph, output_csv_path: str | None = None
     ) -> Generator[list[str], None, None]:
@@ -371,7 +353,6 @@ class Engine:
                     schema_types, [str(item) for item in response.row]
                 )
 
-    @ensure_server_running
     def get_span(self, doc_id: str, start: int, end: int) -> Span:
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)

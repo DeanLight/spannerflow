@@ -89,19 +89,17 @@ impl DataflowService for MyDataflowService {
         println!("Got a request: {:?}", request);
         let req = request.into_inner();
         
-        unsafe {
-            if let Some(doc) = get_document(req.id) {
-                if req.start > req.end || req.start >= doc.len() as u32 || req.end >= doc.len() as u32 {
-                    return Err(Status::invalid_argument("Invalid start or end index"));
-                }
-                let span = doc[req.start as usize..req.end as usize].to_string();
-                let reply = GetSpanResponse {
-                    span: span,
-                };
-                Ok(Response::new(reply))
-            } else {
-                return Err(Status::not_found("Document not found"));
+        if let Some(doc) = get_document(req.id) {
+            if req.start > req.end || req.start >= doc.len() as u32 || req.end >= doc.len() as u32 {
+                return Err(Status::invalid_argument("Invalid start or end index"));
             }
+            let span = doc[req.start as usize..req.end as usize].to_string();
+            let reply = GetSpanResponse {
+                span: span,
+            };
+            Ok(Response::new(reply))
+        } else {
+            return Err(Status::not_found("Document not found"));
         }
     }
 

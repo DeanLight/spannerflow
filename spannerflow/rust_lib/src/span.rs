@@ -119,18 +119,15 @@ impl FromStr for Span {
             let end = caps.get(3).unwrap().as_str().parse::<usize>().unwrap();
             let text = caps.get(4).unwrap().as_str().to_string();
             println!("name: {}, start: {}, end: {} text: {}", name.clone(), start, end, text);
-            // TODO: Add document registry
-            unsafe {
-                let document = get_document(name.clone());
-                match document {
-                    Some(doc) => {
-                        return Ok(Span::new(doc, start, end, name));
-                    },
-                    None => {
-                        let doc = Arc::new(text.clone());
-                        add_document(name.clone(), text.clone().into());
-                        return Ok(Span::new(doc, start, end, name));
-                    }
+            let document = get_document(name.clone());
+            match document {
+                Some(doc) => {
+                    return Ok(Span::new(doc, start, end, name));
+                },
+                None => {
+                    let doc = Arc::new(text.clone());
+                    add_document(name.clone(), text.clone().into());
+                    return Ok(Span::new(doc, start, end, name));
                 }
             }
             let doc = Arc::new(text.clone());
