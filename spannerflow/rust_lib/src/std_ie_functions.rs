@@ -1,6 +1,7 @@
-use regex::Regex;
-use crate::span::{from_span, Span};
 use std::sync::Arc;
+use regex::Regex;
+extern crate rust_span;
+use rust_span::{from_span, Span};
 
 fn rgx(pattern: &str, text: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
     let re = Regex::new(pattern).unwrap();
@@ -106,7 +107,8 @@ pub fn read_span(text_path: &str) -> impl Iterator<Item = Span> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::span::Span;
+    extern crate rust_span;
+    use rust_span::Span;
     use std::fs::File;
     use std::io::Write;
     use std::fs;

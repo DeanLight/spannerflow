@@ -13,7 +13,7 @@ use tokio_stream::StreamExt;
 use dataflow::dataflow_service_server::{DataflowService, DataflowServiceServer};
 use dataflow::{*};
 extern crate rust_span;
-use rust_span::get_document;
+use rust_span::{Span, get_document};
 
 
 pub mod dataflow {
@@ -64,7 +64,9 @@ fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool 
                 return false;
             }
             dataflow::DataType::Span => {
-                // TODO: Implement Span validation
+                if value.parse::<Span>().is_err() {
+                    return false;
+                }
                 return true;
             }
             dataflow::DataType::Custom => {
@@ -90,7 +92,8 @@ impl DataflowService for MyDataflowService {
         let req = request.into_inner();
         
         if let Some(doc) = get_document(req.id) {
-            if req.start > req.end || req.start >= doc.len() as u32 || req.end >= doc.len() as u32 {
+            println!("Got a document len: {:?}", doc.len());
+            if req.start > req.end || req.start >= doc.len() as u32 || req.end > doc.len() as u32 {
                 return Err(Status::invalid_argument("Invalid start or end index"));
             }
             let span = doc[req.start as usize..req.end as usize].to_string();

@@ -23,14 +23,11 @@ pub mod dataflow {
     tonic::include_proto!("dataflow.v1");
 }
 
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-
-mod span;
 mod std_ie_functions;
-use span::*;
 use std_ie_functions::*;
+extern crate rust_span;
+use rust_span::*;
+
 
 macro_rules! tuple_to_vec_string {
     // Base case: empty tuple
