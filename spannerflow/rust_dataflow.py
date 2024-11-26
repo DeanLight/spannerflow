@@ -760,9 +760,7 @@ class RustDataflow:
         self._query_id += 1
         self.create_rust_file(timestamp, graph)
         self.build_rust(
-            self._config.RUST_SERVER_LIB_DIR_PATH.joinpath(
-                self._cargo_file_name
-            ).absolute(),
+            self._config.PACKAGE_ROOT.joinpath(self._cargo_file_name).absolute(),
             self._config.RUST_SO_BUILD_LOG_PATH,
         )
         # Determine file extension based on the platform
@@ -778,9 +776,7 @@ class RustDataflow:
             lib_filename = f"{crate_name}{extension}"
         else:
             raise RuntimeError("Unsupported OS")
-        lib_path = self._config.RUST_SERVER_LIB_DIR_PATH.joinpath(
-            "target", "release", lib_filename
-        )
+        lib_path = self._config.PACKAGE_ROOT.joinpath("target", "debug", lib_filename)
         new_lib_path = self._config.GENERATED_RUST_PROJECT_PATH.joinpath(
             f"{timestamp}{extension}"
         )
@@ -794,17 +790,22 @@ class RustDataflow:
         command = [
             "cargo",
             "build",
-            "--release",
             "--manifest-path",
             str(cargo_toml_path),
+            "-p",
+            "spannerflow",
         ]
 
         self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        env = os.environ.copy()
+        # RUSTFLAGS="-C prefer-dynamic -C link-arg=-Wl,-rpath,@loader_path/../lib" cargo build
+        env["RUSTFLAGS"] = "-C prefer-dynamic"
         with open(log_path, "a") as log_file:
             subprocess.run(
                 command,
                 cwd=str(cargo_toml_path.parent),
                 check=True,
+                env=env,
                 stderr=log_file,
                 stdout=log_file,
             )

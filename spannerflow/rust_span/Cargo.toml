@@ -3,10 +3,13 @@ name = "rust_span"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["dylib"]
+
 [dependencies]
-lazy_static = "1.5.0"
-regex = "1.11.1"
-sha1 = "0.10.6"
-hex = "0.4.3"
-serde = { version = "1.0.215", features = ["derive", "rc"] }
-serde_derive = "1.0.215"
+lazy_static = { workspace = true }
+regex = { workspace = true }
+sha1 = { workspace = true }
+hex = { workspace = true }
+serde = { workspace = true }
+serde_derive = { workspace = true }
