@@ -1,0 +1,22 @@
+let {{ output_node }} = {{ prev_node}}
+                            .map(|{{ in_schema }}| ({{ in_schema }}, 0))
+                            .reduce(|key, input, output| {
+                                let mut ie_input = vec![];
+                                for (val, cnt) in input.iter() {
+                                    ie_input.push(tuple_to_vec_string!( 
+                                    {% if in_schema_len > 1 %}{% for index in range(in_schema_len) %}key.{{ index }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                    {% else %}key{% endif %}
+                                    ));
+                                }
+                                match run_ie_function("{{ grpc_address }}".to_string(), "{{ function_name }}".to_string(), ie_input, {{ in_arity }}, {{ out_arity }}) {
+                                    Ok(results) => {
+                                        for i in results {
+                                            output.push((i, 1));
+                                        }
+                                    },
+                                    Err(e) => {
+                                        eprintln!("Failed to run IE function: {}", e); // Log the error
+                                    }
+                                }                            
+                            })
+                            .map(|(key, val)| ({% if in_schema_len > 1 %}{% for index in range(in_schema_len) %}key.{{ index }}, {% endfor %}{% else %}key, {% endif %} {% for index in range(out_schema_len) %}val[{{ index }}].clone().parse::<{{DATAFLOW_TO_RUST_TYPES[out_schema_types[index+in_schema_len]]}}>().unwrap(){% if not loop.last %}, {% endif%}{% endfor %} ));
