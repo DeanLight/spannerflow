@@ -1,24 +1,15 @@
 use std::process::Command;
 
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let lib_path = "../rust_span";
-
-    let output = Command::new("cargo")
-        .arg("build")
-        .arg("--release")
-        .current_dir(lib_path)
+    let sysroot = Command::new("rustc")
+        .arg("--print")
+        .arg("sysroot")
         .output()
-        .expect("Failed to build library");
+        .expect("Failed to get rustc sysroot")
+        .stdout;
+    let sysroot = String::from_utf8_lossy(&sysroot).trim().to_string();
 
-    if !output.status.success() {
-        panic!(
-            "Library build failed:\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-
-    println!("cargo:rustc-link-search=all=/Users/ofer/code/technion/spannerflow/rust_server/target/debug/deps");
+    println!("cargo:rustc-link-arg=-Wl,-rpath,{}/lib", sysroot);
     tonic_build::compile_protos("../proto/dataflow/v1/dataflow.proto")?;
     Ok(())
 }

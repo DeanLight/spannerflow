@@ -798,7 +798,6 @@ class RustDataflow:
 
         self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
-        # RUSTFLAGS="-C prefer-dynamic -C link-arg=-Wl,-rpath,@loader_path/../lib" cargo build
         env["RUSTFLAGS"] = "-C prefer-dynamic"
         with open(log_path, "a") as log_file:
             subprocess.run(
