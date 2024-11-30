@@ -7,6 +7,7 @@ __all__ = ['SPAN_REPR_FORMAT', 'SPAN_TEXT_HEAD_NUM', 'small_hash', 'set_span_rep
 
 # %% ../nbs/15_span.ipynb 3
 import hashlib
+import re
 from collections import UserString
 from pathlib import Path
 
@@ -132,6 +133,14 @@ class Span(UserString):
             doc=self.name, start=self.start, end=self.end, text=text
         )
 
+    def serialize(self):
+        return SPAN_REPR_FORMAT.format(
+            doc=self.name,
+            start=self.start,
+            end=self.end,
+            text=self.doc[self.start : self.end],
+        )
+
     def __len__(self):
         return self.end - self.start
 
@@ -170,6 +179,17 @@ class Span(UserString):
         if isinstance(val, (list, tuple)) and len(val) == 3:
             return Span(doc=val[0], start=val[1], end=val[2])
         raise ValueError("Invalid value to create Vector from: {}".format(val))
+
+    @staticmethod
+    def deserialize_span(span_str: str):
+        SPAN_PATTERN = (
+            r"^\[@(?P<doc_id>.*),(?P<start>\d+),(?P<end>\d+)\) \"(?P<text>.*)\"$"
+        )
+        matches = re.match(SPAN_PATTERN, span_str)
+        if matches is None:
+            raise ValueError(f"Invalid span string: {span_str}")
+        res = matches.groupdict()
+        return Span(res["text"], int(res["start"]), int(res["end"]), res["doc_id"])
 
 
 def ie(s: Span) -> tuple[int, int]:
