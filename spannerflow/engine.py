@@ -85,9 +85,11 @@ def serialize_row(schema: list[str], row: list[Any]) -> list[str]:
                     raise ValueError(f"Expected bool, got {type(value)}")
                 new_row.append(str(value).lower())
             case dataflow_pb2.DataType.DATA_TYPE_SPAN:  # type: ignore
+                if isinstance(value, str):
+                    value = Span(value)
                 if not isinstance(value, Span):
                     raise ValueError(f"Expected Span, got {type(value)}")
-                new_row.append(repr(value))
+                new_row.append(value.serialize())
             case dataflow_pb2.DataType.DATA_TYPE_INT64:  # type: ignore
                 if not isinstance(value, (int, np.int64)):
                     raise ValueError(f"Expected int/numpy.int64, got {type(value)}")

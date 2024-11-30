@@ -132,6 +132,14 @@ class Span(UserString):
             doc=self.name, start=self.start, end=self.end, text=text
         )
 
+    def serialize(self):
+        return SPAN_REPR_FORMAT.format(
+            doc=self.name,
+            start=self.start,
+            end=self.end,
+            text=self.doc[self.start : self.end],
+        )
+
     def __len__(self):
         return self.end - self.start
 
