@@ -119,10 +119,16 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                     context.set_details("Function data must be provided before rows.")
                     context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                     return  # Function name must come first
+                row = []
                 str_arguments = [str(cell) for cell in request.row.row]
-                rows.append(
-                    [func_in_scehma[i](cell) for i, cell in enumerate(str_arguments)]
-                )
+
+                for i, cell in enumerate(str_arguments):
+                    arg_type = func_in_scehma[i]
+                    if arg_type is Span:
+                        row.append(Span.deserialize_span(cell))
+                    else:
+                        row.append(arg_type(cell))
+                rows.append(row)
 
         if function_name is None or func is None:
             context.set_details("No function data provided.")
@@ -139,7 +145,7 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                     if func_out_schema[i] is bool:
                         response_row.append(str(cell).lower())
                     elif func_out_schema[i] is Span:
-                        response_row.append(repr(cell))
+                        response_row.append(cell.serialize())  # type: ignore
                     else:
                         response_row.append(str(cell))
 
