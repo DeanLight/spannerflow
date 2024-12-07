@@ -148,12 +148,10 @@ impl FromStr for Span {
             let document = get_document(name.clone());
             match document {
                 Some(doc) => {
-                    println!("old document: {}", name);
                     return Ok(Span::new(doc, start, end, name));
                 },
                 None => {
                     let doc = Arc::new(text.clone());
-                    println!("New document: {}", name);
                     add_document(name.clone(), text.clone().into());
                     return Ok(Span::new(doc, start, end, name));
                 }
@@ -211,6 +209,9 @@ pub fn from_span(span: &Span, start: usize, end: usize) -> Span {
 }
 
 mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
 
     #[test]
     fn test_span_new() {
@@ -325,5 +326,22 @@ mod tests {
        assert_eq!(sub_span.get_start(), 7);
        assert_eq!(sub_span.get_end(), 12);
        assert_eq!(sub_span.as_str(), "world");
+    }
+
+    #[test]
+    fn test_doc_registry_add_document() {
+        let doc = Arc::new("Hello, world!".to_string());
+        add_document("doc1".to_string(), doc.clone());
+        let doc_from_registry = get_document("doc1".to_string()).unwrap();
+        assert_eq!(doc, doc_from_registry);
+    }
+
+    #[test]
+    fn test_doc_registry_slice(){
+        let doc = Arc::new("patient was screened for cov-19. results came back positive.".to_string());
+        add_document("doc2".to_string(), doc.clone());
+        let doc_from_registry = get_document("doc2".to_string()).unwrap();
+        let span = Span::new(doc_from_registry.clone(), 8, 11, "doc2".to_string());
+        assert_eq!(span.as_str(), "was");  
     }
 }

@@ -350,4 +350,12 @@ class Engine:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
             request = dataflow_pb2.GetSpanRequest(id=doc_id, start=start, end=end)  # type: ignore
             response = stub.GetSpan(request)
-            return Span(doc=response.span)
+            return Span(
+                doc=response.span,
+                start=start,
+                end=end,
+                name=doc_id,
+                from_registry=True,
+                doc_start=start,
+                doc_end=end,
+            )

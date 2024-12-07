@@ -69,7 +69,9 @@ STD_IE_FUNCTIONS: dict[str, dict[tuple, str]] = {
     "span_contained": {("DATA_TYPE_SPAN", "DATA_TYPE_SPAN"): "span_contained"},
     "rgx_split": {
         ("DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_split_str",
+        ("DATA_TYPE_STRING", "DATA_TYPE_STRING", "DATA_TYPE_STRING"): "rgx_split_str",
         ("DATA_TYPE_STRING", "DATA_TYPE_SPAN"): "rgx_split_span",
+        ("DATA_TYPE_STRING", "DATA_TYPE_SPAN", "DATA_TYPE_STRING"): "rgx_split_span",
     },
 }
 
@@ -211,13 +213,19 @@ def get_union_code(
         for pred in graph.pred[node]
         if "reduced" not in graph.get_edge_data(pred, node)
     ]
+    var_decl = f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str}"
     if not preds:
-        return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = scope.new_collection_from(vec![]).1;"
+        return f"{var_decl} = scope.new_collection_from(vec![]).1;"
     prev_node1_str = get_node_str(preds[0], anchor=anchor, in_iterate=in_iterate)
     if len(preds) == 1:
-        return f"let {' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.clone();"
-    prev_node2_str = get_node_str(preds[1], anchor=anchor, in_iterate=in_iterate)
-    return f"let{' mut' if not in_iterate and node_str == 'node_' + str(node) else ''} {node_str} = {prev_node1_str}.concat(&{prev_node2_str}).distinct();"
+        return f"{var_decl} = {prev_node1_str}.clone();"
+
+    uninion_code = prev_node1_str
+    for i in range(1, len(preds)):
+        prev_node_i_str = get_node_str(preds[i], anchor=anchor, in_iterate=in_iterate)
+        uninion_code = f"{uninion_code}.concat(&{prev_node_i_str})"
+
+    return f"{var_decl} = {uninion_code}.distinct();"
 
 # %% ../nbs/50_rust_dataflow.ipynb 10
 def get_project_code(
@@ -446,6 +454,15 @@ def get_ie_map_code(
             code = f"let {node_str} = {prev_node_str}.flat_map(|{get_col_schema(in_schema)}| {{ \n \
                 {func_name}({', '.join([f'&{col}' for col in in_schema])}).map(move |vec| ({', '.join([f'{col}.clone()' for col in in_schema]+[f'vec[{i}].clone()' for i in range(gr_node["out_arity"])])})) \n \
             }});"
+        case "rgx_split":
+            func_name = STD_IE_FUNCTIONS["rgx_split"][tuple(in_type_schema)]
+            func_args = ", ".join([f"&{col}" for col in in_schema])
+            if in_arity == 2:
+                func_args += ', "Start Tag"'
+            code = f"let {node_str} = {prev_node_str}.flat_map(|{get_col_schema(in_schema)}| {{ \n \
+                {func_name}({func_args}).map(move |{get_col_schema(out_schema)}| ({', '.join([f'{col}.clone()' for col in in_schema]+out_schema)})) \n \
+            }});"
+
         case (
             "as_str"
             | "rgx_split"
@@ -493,9 +510,7 @@ def validate_node(graph: nx.DiGraph, node: str | int) -> None:
                 for pred in graph.pred[node]
                 if "reduced" not in graph.get_edge_data(pred, node)
             ]
-            if len(preds) not in (0, 1, 2) or (
-                len(preds) == 0 and not gr_node.get("anchor", False)
-            ):
+            if len(preds) == 0 and not gr_node.get("anchor", False):
                 raise ValueError(
                     "Union node has invalid number of predecessors: ",
                     (len(preds), node),

@@ -52,12 +52,12 @@ pub fn deconstruct_span(span: &Span) -> impl Iterator<Item= (String, i32, i32)>{
     return std::iter::once((span.get_name(), span.get_start() as i32, span.get_end() as i32));
 }
 
-pub fn rgx_is_mtach_str(delim: &str, text: &str)-> impl Iterator<Item= bool>{
+pub fn rgx_is_match_str(delim: &str, text: &str)-> impl Iterator<Item= bool>{
     return std::iter::once(Regex::new(delim).unwrap().is_match(text));
 }
 
-pub fn rgx_is_mtach_span(delim: &str, span: &Span)-> impl Iterator<Item= bool>{
-    return rgx_is_mtach_str(delim, span.as_str());
+pub fn rgx_is_match_span(delim: &str, span: &Span)-> impl Iterator<Item= bool>{
+    return rgx_is_match_str(delim, span.as_str());
 }
 
 fn rgx_split(delim: &str, text: &str, intial_tag: &str, base_span: &Span)-> impl Iterator<Item= (Span, Span)>{
@@ -185,16 +185,16 @@ mod tests {
 
     #[test]
     fn test_rgx_is_match_str(){
-        assert_eq!(rgx_is_mtach_str("(a*)@(b*)", "dddaaaaa@bbbbbbaa@bb").collect::<Vec<_>>(), vec![true]);
-        assert_eq!(rgx_is_mtach_str("(a*)@(e+)", "dddaaaaa@bbbbbbaa@bb").collect::<Vec<_>>(), vec![false]);
+        assert_eq!(rgx_is_match_str("(a*)@(b*)", "dddaaaaa@bbbbbbaa@bb").collect::<Vec<_>>(), vec![true]);
+        assert_eq!(rgx_is_match_str("(a*)@(e+)", "dddaaaaa@bbbbbbaa@bb").collect::<Vec<_>>(), vec![false]);
     }
 
     #[test]
     fn test_rgx_is_match_span(){
         let document = "dddaaaaa@bbbbbbaa@bb";
         let span_document= Span::new(Arc::<String>::new(document.to_string()), 0, document.len(), "doc1".to_string());
-        assert_eq!(rgx_is_mtach_span("(a*)@(b*)", &span_document).collect::<Vec<_>>(), vec![true]);
-        assert_eq!(rgx_is_mtach_span("(a*)@(e+)", &span_document).collect::<Vec<_>>(), vec![false]);
+        assert_eq!(rgx_is_match_span("(a*)@(b*)", &span_document).collect::<Vec<_>>(), vec![true]);
+        assert_eq!(rgx_is_match_span("(a*)@(e+)", &span_document).collect::<Vec<_>>(), vec![false]);
     }
     
     #[test]

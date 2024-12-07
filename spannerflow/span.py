@@ -68,7 +68,22 @@ def get_span_repr_format() -> tuple[str, int | None]:
 
 
 class Span(UserString):
-    def __init__(self, doc, start=None, end=None, name=None):
+    def __init__(
+        self,
+        doc,
+        start=None,
+        end=None,
+        name=None,
+        from_registry: bool = False,
+        doc_start: int = 0,
+        doc_end: int | None = None,
+    ):
+
+        self.from_registry = from_registry
+        if self.from_registry:
+            self.doc_start = doc_start
+            self.doc_end = doc_end
+
         if isinstance(doc, Span):
             # father = doc
             sub_span = doc.slice(start, end)
@@ -126,7 +141,7 @@ class Span(UserString):
 
     def __repr__(self):
         f_string, head_num = get_span_repr_format()
-        text = self.doc[self.start : self.end]
+        text = self.as_str()
         if len(text) > head_num:
             text = text[:head_num] + "..."
         return SPAN_REPR_FORMAT.format(
@@ -138,7 +153,7 @@ class Span(UserString):
             doc=self.name,
             start=self.start,
             end=self.end,
-            text=self.doc[self.start : self.end],
+            text=self.as_str(),
         )
 
     def __len__(self):
@@ -148,6 +163,8 @@ class Span(UserString):
         return self.as_str()
 
     def as_str(self):
+        if self.from_registry:
+            return self.doc[self.doc_start - self.start : self.doc_end - self.start]
         return self.doc[self.start : self.end]
 
     # # used for sorting `Span`s in dataframes
@@ -189,7 +206,15 @@ class Span(UserString):
         if matches is None:
             raise ValueError(f"Invalid span string: {span_str}")
         res = matches.groupdict()
-        return Span(res["text"], int(res["start"]), int(res["end"]), res["doc_id"])
+        return Span(
+            res["text"],
+            int(res["start"]),
+            int(res["end"]),
+            res["doc_id"],
+            from_registry=True,
+            doc_start=int(res["start"]),
+            doc_end=int(res["end"]),
+        )
 
 
 def ie(s: Span) -> tuple[int, int]:
