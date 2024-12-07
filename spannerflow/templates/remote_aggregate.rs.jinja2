@@ -4,7 +4,7 @@ let {{ output_node }} = {{ prev_node}}
                                 let mut agg_input = vec![];
                                 for (val, cnt) in input.iter() {
                                     agg_input.push(tuple_to_vec_string!( 
-                                    {% if groupby_len > 1 %}{% for index in range(groupby_len) %}val.{{ index }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                    {% if agg_len > 1 %}{% for index in range(agg_len) %}val.{{ index }}{% if not loop.last %}, {% endif %}{% endfor %}
                                     {% else %}val{% endif %}
                                     ));
                                 }

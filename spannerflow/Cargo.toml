@@ -16,7 +16,7 @@ libloading = "0.8.5"
 ordered-float = "4.5.0"
 prost = "0.13.3"
 prost-types = "0.13.3"
-regex = "1.11.1"
+fancy-regex = "0.14.0"
 serde = { version = "1.0.215", features = ["derive", "rc"] }
 serde_derive = "1.0.215"
 sha1 = "0.10.6"

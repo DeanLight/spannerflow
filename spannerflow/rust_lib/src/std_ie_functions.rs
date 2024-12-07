@@ -1,28 +1,36 @@
 use std::sync::Arc;
-use regex::Regex;
+use fancy_regex::Regex;
 extern crate rust_span;
 use rust_span::{from_span, Span};
 
 fn rgx(pattern: &str, text: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
     let re = Regex::new(pattern).unwrap();
-    
     let mut outer_vec = Vec::new();
-    for caps in re.captures_iter(text) {
+    let mut start = 0;
+
+    // Use a loop to manually iterate over matches
+    while let Ok(Some(caps)) = re.captures_from_pos(text, start) {
         let mut inner_vec = Vec::new();
         if caps.len() == 1 {
             if let Some(m) = caps.get(0) {
-                inner_vec.push(from_span(&span, m.start(), m.end()));
+            inner_vec.push(from_span(&span, m.start(), m.end()));
+            start = m.end(); // Move to the end of the current match
             }
-        }
-        for i in 1..caps.len() {
+        } else {
+            for i in 1..caps.len() {
             if let Some(m) = caps.get(i) {
                 inner_vec.push(from_span(&span, m.start(), m.end()));
+            }
+            }
+            if let Some(m) = caps.get(0) {
+            start = m.end(); // Move to the end of the current match
             }
         }
         outer_vec.push(inner_vec);
     }
     outer_vec.into_iter()
 }
+
 
 pub fn rgx_str_span(pattern: &str, text: &str) -> impl Iterator<Item = Vec<Span>> {
     let doc: Arc::<String> = Arc::new(text.to_string());
@@ -53,7 +61,7 @@ pub fn deconstruct_span(span: &Span) -> impl Iterator<Item= (String, i32, i32)>{
 }
 
 pub fn rgx_is_match_str(delim: &str, text: &str)-> impl Iterator<Item= bool>{
-    return std::iter::once(Regex::new(delim).unwrap().is_match(text));
+    return std::iter::once(Regex::new(delim).unwrap().is_match(text).unwrap_or(false));
 }
 
 pub fn rgx_is_match_span(delim: &str, span: &Span)-> impl Iterator<Item= bool>{
@@ -243,7 +251,7 @@ mod tests {
 
     #[test]
     fn test_read_span_with_file_creation() {
-        let test_file_path = "tmp/test.txt";
+        let test_file_path = "test.txt";
         let test_content = "This is a test file content.";
 
         // Create the file

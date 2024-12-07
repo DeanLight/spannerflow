@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::str::FromStr;
 use sha1::{Sha1, Digest};
 use hex;
-use regex::Regex;
+use fancy_regex::Regex;
 
 #[macro_use]
 extern crate serde_derive;
@@ -21,14 +21,14 @@ lazy_static::lazy_static! {
 #[no_mangle]
 pub fn add_document(id: String, doc: sync::Arc<String>) {
     let mut documents = DOCUMENTS.lock().unwrap();
-    println!("Adding document: {}", documents.len());
+    //println!("Adding document: {}", documents.len());
     documents.insert(id, doc);
 }
 // change to get_span - input id, start, end- return copy of substring of document. expose this to the API
 #[no_mangle]
 pub fn get_document(id: String) -> Option<sync::Arc<String>> {
     let documents = DOCUMENTS.lock().unwrap();
-    println!("getting document: {}", documents.len());
+    //println!("getting document: {}", documents.len());
     match documents.get(&id) {
         Some(doc) => Some(sync::Arc::clone(doc)),
         None => None,
@@ -139,12 +139,12 @@ impl FromStr for Span {
 
     fn from_str(s: &str) -> Result<Self, Self::Err>  {
         let re = Regex::new(r#"\[@(\w+),(\d+),(\d+)\) "(.+)""#).unwrap();
-        if let Some(caps) = re.captures(s) {
+        if let Ok(Some(caps)) = re.captures(s) {
             let name = caps.get(1).unwrap().as_str().to_string();
             let start = caps.get(2).unwrap().as_str().parse::<usize>().unwrap();
             let end = caps.get(3).unwrap().as_str().parse::<usize>().unwrap();
             let text = caps.get(4).unwrap().as_str().to_string();
-            println!("name: {}, start: {}, end: {} text: {}", name.clone(), start, end, text);
+            // println!("name: {}, start: {}, end: {} text: {}", name.clone(), start, end, text);
             let document = get_document(name.clone());
             match document {
                 Some(doc) => {
