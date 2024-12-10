@@ -167,7 +167,7 @@ class Engine:
                 env = os.environ.copy()
                 env["BIND_PORT"] = str(self._config.DATAFLOW_PORT)
                 self._rust_server_process = subprocess.Popen(
-                    [str(server_path)],
+                    [str(server_path), "-w", "4"],
                     stdout=log_file,
                     stderr=log_file,
                     env=env,

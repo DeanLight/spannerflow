@@ -13,7 +13,7 @@ use tonic::Request;
 use ordered_float::OrderedFloat;
 
 use futures::stream::{self};
-
+use chrono::Local;
 use tokio::runtime::Runtime;
 
 use dataflow::function_service_client::FunctionServiceClient;
@@ -75,7 +75,6 @@ fn run_ie_function(address: String, function_name: String, data: Vec<Vec<String>
 
         while let Some(response) = response_stream.message().await? {       
             let  response_row = response.row.clone();
-            println!("RESPONSE: {:?}", response_row);     
             output.push(response_row);
         }
 
@@ -110,7 +109,6 @@ fn run_agg_function(address: String, function_name: String, data: Vec<Vec<String
 
         while let Some(response) = response_stream.message().await? {       
             let  response_row = response.row.clone();
-            println!("RESPONSE: {:?}", response_row);     
             output.push(response_row);
         }
 
@@ -120,6 +118,8 @@ fn run_agg_function(address: String, function_name: String, data: Vec<Vec<String
 
 #[no_mangle]
 pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>{
+    let mut now = Local::now();
+    println!("{} Started Running", now);
     {% for key,value in sources.items() %}
         {% if value["op"] == "get_rel" %}let collection_{{ value['name'] }} = collections.get("{{ value['name'] }}").unwrap().clone();{% endif %}
     {% endfor %}
@@ -127,6 +127,12 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
         let result = Arc::clone(&output);
 
         let _ = timely::execute_from_args(std::env::args(), move |worker| {
+
+        let worker_index = worker.index(); // Current worker's index
+        let total_workers = worker.peers(); // Total number of workers (threads)
+        
+        println!("Worker {} of {}", worker_index, total_workers);
+
         {% for key,value in sources.items() %}
             let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['schema'] %}{{ element }}{% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
         {% endfor %}
@@ -156,5 +162,7 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
             {% endif %}
             {% endfor %}
         });
+        now = Local::now();
+        println!("{} Finished Running", now);
         return output.lock().unwrap().clone();
 }

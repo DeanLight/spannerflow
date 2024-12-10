@@ -17,6 +17,7 @@ fancy-regex = { workspace = true }
 futures = { workspace = true }
 ordered-float = { workspace = true }
 tokio = { workspace = true }
+chrono = { workspace = true }
 rust_span = { path = "../rust_span" }
 
 [build-dependencies]
