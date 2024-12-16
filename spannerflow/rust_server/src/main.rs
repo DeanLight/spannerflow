@@ -513,7 +513,7 @@ async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<Str
             error!("Failed to load library from path {}: {:?}", so_path, e);
             Status::not_found("Failed to load shared library")
         })?;
-        let function: Symbol<unsafe extern "Rust" fn(&HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>> = match lib.get(fn_name.as_bytes()) {
+        let function: Symbol<unsafe extern "Rust" fn(&HashMap<String, Vec<Vec<String>>>) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>>> = match lib.get(fn_name.as_bytes()) {
             Ok(func) => func,
             Err(e) => {
                 error!("Failed to get function {}: {:?}", fn_name, e);
@@ -525,7 +525,13 @@ async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<Str
         // Acquire the lock on collections
         let collections_guard = COLLECTIONS.lock().await;
 
-        let output: Vec<Vec<String>> = function(&*collections_guard);
+        let output: Vec<Vec<String>> = match function(&*collections_guard) {
+            Ok(output) => output,
+            Err(e) => {
+                error!("Failed to run function {}: {:?}", fn_name, e);
+                return Err(Status::internal("Failed to run function"));
+            }
+        };
         // Drop the library immediately after using it
         std::mem::drop(lib);
         return Ok(output)

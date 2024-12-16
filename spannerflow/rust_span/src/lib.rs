@@ -138,7 +138,7 @@ impl FromStr for Span {
     type Err = SpanParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err>  {
-        let re = Regex::new(r#"\[@(\w+),(\d+),(\d+)\) "(.+)""#).unwrap();
+        let re = Regex::new(r#"\[@(\w+),(\d+),(\d+)\) "(.*)""#).unwrap();
         if let Ok(Some(caps)) = re.captures(s) {
             let name = caps.get(1).unwrap().as_str().to_string();
             let start = caps.get(2).unwrap().as_str().parse::<usize>().unwrap();

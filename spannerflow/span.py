@@ -91,6 +91,10 @@ class Span(UserString):
             self.start = sub_span.start
             self.end = sub_span.end
             self.name = sub_span.name
+            if sub_span.from_registry:
+                self.from_registry = True
+                self.doc_start = sub_span.doc_start
+                self.doc_end = sub_span.doc_end
 
         else:
             if isinstance(doc, Path):
@@ -132,6 +136,16 @@ class Span(UserString):
         if end > len(self):
             raise ValueError(
                 f"End index greater than length of span, got end: {end}, length: {len(self)}"
+            )
+        if self.from_registry:
+            return Span(
+                self.doc,
+                self.doc_start + start,
+                self.doc_start + end,
+                name=self.name,
+                from_registry=True,
+                doc_start=self.doc_start,
+                doc_end=self.doc_end,
             )
         return Span(self.doc, self.start + start, self.start + end, name=self.name)
 
