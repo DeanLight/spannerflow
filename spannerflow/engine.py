@@ -166,10 +166,11 @@ class Engine:
             with open(self._config.RUST_SERVER_LOG_PATH, "a") as log_file:
                 env = os.environ.copy()
                 env["BIND_PORT"] = str(self._config.DATAFLOW_PORT)
-                env["RUST_LOG"] = "info"
+                env["RUST_LOG"] = "trace"
                 env["RUST_LOG_STYLE"] = "never"
+                env["RUST_BACKTRACE"] = "1"
                 self._rust_server_process = subprocess.Popen(
-                    [str(server_path), "-w", "4"],
+                    [str(server_path), "-w", "1"],
                     stdout=log_file,
                     stderr=log_file,
                     env=env,
