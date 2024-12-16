@@ -1,25 +1,26 @@
 use std::sync::Arc;
 use fancy_regex::Regex;
+
 extern crate rust_span;
 use rust_span::{from_span, Span};
+
 
 fn rgx(pattern: &str, text: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
     let re = Regex::new(pattern).unwrap();
     let mut outer_vec = Vec::new();
     let mut start = 0;
-
     // Use a loop to manually iterate over matches
     while let Ok(Some(caps)) = re.captures_from_pos(text, start) {
         let mut inner_vec = Vec::new();
         if caps.len() == 1 {
             if let Some(m) = caps.get(0) {
-            inner_vec.push(from_span(&span, m.start(), m.end()));
-            start = m.end(); // Move to the end of the current match
+                inner_vec.push(Span::new(span.get_doc().clone(), m.start(), m.end(), span.get_name()));
+                start = m.end(); // Move to the end of the current match
             }
         } else {
             for i in 1..caps.len() {
             if let Some(m) = caps.get(i) {
-                inner_vec.push(from_span(&span, m.start(), m.end()));
+                inner_vec.push(Span::new(span.get_doc().clone(), m.start(), m.end(), span.get_name()));
             }
             }
             if let Some(m) = caps.get(0) {
