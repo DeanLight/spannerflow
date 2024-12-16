@@ -17,15 +17,15 @@ ordered-float = "4.5.0"
 prost = "0.13.3"
 prost-types = "0.13.3"
 fancy-regex = "0.14.0"
-serde = { version = "1.0.215", features = ["derive", "rc"] }
+serde = { version = "1.0.216", features = ["derive", "rc"] }
 serde_derive = "1.0.215"
 sha1 = "0.10.6"
 timely = "0.14.0" 
 tokio = { version = "1.41.1", features = ["full"] }
 tokio-stream = "0.1.16"
 tonic = "0.12.3"
-chrono = "0.4"
-
+log = "0.4.22"
+env_logger = "0.11.5"
 
 [workspace.metadata.marker.lints]
 marker_lints = "0.5.0"

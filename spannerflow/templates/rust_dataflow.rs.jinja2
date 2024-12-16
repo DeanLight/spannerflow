@@ -9,11 +9,10 @@ use differential_dataflow::input::{InputSession ,Input};
 use differential_dataflow::operators::*;
 
 use tonic::Request;
-
+use log::{info, error};
 use ordered_float::OrderedFloat;
 
 use futures::stream::{self};
-use chrono::Local;
 use tokio::runtime::Runtime;
 
 use dataflow::function_service_client::FunctionServiceClient;
@@ -118,8 +117,7 @@ fn run_agg_function(address: String, function_name: String, data: Vec<Vec<String
 
 #[no_mangle]
 pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>{
-    let mut now = Local::now();
-    println!("{} Started Running", now);
+    info!("Started Running");
     {% for key,value in sources.items() %}
         {% if value["op"] == "get_rel" %}let collection_{{ value['name'] }} = collections.get("{{ value['name'] }}").unwrap().clone();{% endif %}
     {% endfor %}
@@ -131,7 +129,7 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
         let worker_index = worker.index(); // Current worker's index
         let total_workers = worker.peers(); // Total number of workers (threads)
         
-        println!("Worker {} of {}", worker_index, total_workers);
+        info!("Worker {} of {}", worker_index, total_workers);
 
         {% for key,value in sources.items() %}
             let mut input_{{value['name']}}: InputSession::<usize, ({% for element in value['schema'] %}{{ element }}{% if not loop.last %}, {% endif %}{% endfor %}), isize> = InputSession::new();
@@ -162,7 +160,6 @@ pub extern "C" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<Strin
             {% endif %}
             {% endfor %}
         });
-        now = Local::now();
-        println!("{} Finished Running", now);
+        info!("Finished Running");
         return output.lock().unwrap().clone();
 }

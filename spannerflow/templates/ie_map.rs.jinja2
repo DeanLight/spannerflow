@@ -15,7 +15,7 @@ let {{ output_node }} = {{ prev_node}}
                                         }
                                     },
                                     Err(e) => {
-                                        eprintln!("Failed to run IE function: {}", e); // Log the error
+                                        error!("Failed to run IE function: {}", e); // Log the error
                                     }
                                 }                            
                             })

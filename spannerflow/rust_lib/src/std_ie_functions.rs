@@ -48,7 +48,7 @@ pub fn span_as_str(span: &Span) -> impl Iterator<Item = String> {
 }
 
 pub fn span_contained(span1: &Span, span2: &Span) -> impl Iterator<Item= bool> {
-    if span1.get_doc() == span2.get_doc() && span1.get_start() >= span2.get_start() && span1.get_end() <= span2.get_end() {
+    if span1.get_name() == span2.get_name() && span1.get_start() >= span2.get_start() && span1.get_end() <= span2.get_end() {
         return std::iter::once(true);
     }
     else{

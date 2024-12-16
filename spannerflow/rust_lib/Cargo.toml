@@ -17,8 +17,9 @@ fancy-regex = { workspace = true }
 futures = { workspace = true }
 ordered-float = { workspace = true }
 tokio = { workspace = true }
-chrono = { workspace = true }
 rust_span = { path = "../rust_span" }
+log = { workspace = true }
+env_logger = { workspace = true }
 
 [build-dependencies]
 tonic-build = "0.12.3"
