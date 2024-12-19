@@ -14,13 +14,13 @@ fn rgx(pattern: &str, text: &str, span: &Span) -> impl Iterator<Item = Vec<Span>
         let mut inner_vec = Vec::new();
         if caps.len() == 1 {
             if let Some(m) = caps.get(0) {
-                inner_vec.push(Span::new(span.get_doc().clone(), m.start(), m.end(), span.get_name()));
+                inner_vec.push(from_span(span, m.start(), m.end()));
                 start = m.end(); // Move to the end of the current match
             }
         } else {
             for i in 1..caps.len() {
             if let Some(m) = caps.get(i) {
-                inner_vec.push(Span::new(span.get_doc().clone(), m.start(), m.end(), span.get_name()));
+                inner_vec.push(from_span(span, m.start(), m.end()));
             }
             }
             if let Some(m) = caps.get(0) {
@@ -41,7 +41,7 @@ pub fn rgx_str_span(pattern: &str, text: &str) -> impl Iterator<Item = Vec<Span>
 }
 
 pub fn rgx_span_span(pattern: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
-    rgx(pattern, &span.get_doc(), span)
+    rgx(pattern, &span.as_str(), span)
 }
 
 pub fn span_as_str(span: &Span) -> impl Iterator<Item = String> {
@@ -277,6 +277,25 @@ mod tests {
     }
 
 
+    #[test]
+    fn test_weired_regex(){
+        let doc = Arc::new("patient presents to be tested for COVID-19. His family recently tested positive for COVID-19.".to_string());
+        let span: Span = Span::new(doc, 0, 93 , "".to_string());
+        let subspan1 = from_span(&span, 0, 43);
+        let subspan2 = from_span(&span, 44, 93);
+        println!("Subspan: {}", subspan1.as_str());
+        println!("Subspan: {}", subspan2.as_str());
 
+        let patt = r"(?i)(?:(?:(?:test(?:\S+)?)?positive(?: for)?|notif(?:y|ied) of positive (?:results?|test(?:\S+)?|status))(?: (?!)\S+)*? COVID-19)";
+        let result1 = rgx_span_span(patt, &subspan1).collect::<Vec<_>>();
+        assert_eq!(result1.len(), 0);
+ 
+        let result2 = rgx_span_span(patt, &subspan2).collect::<Vec<_>>();
+        println!("{:?}", result2[0][0]);
+        assert_eq!(result2.len(), 1);
+        assert_eq!(result2[0][0], from_span(&span, 71, 92))
+
+        
+    }
 
 }
