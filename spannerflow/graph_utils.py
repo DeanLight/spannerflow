@@ -5,7 +5,7 @@
 # %% auto 0
 __all__ = ['find_sources', 'find_output', 'change_node_key', 'get_cycles', 'find_anchor_of_cycle', 'reduced_graph',
            'get_node_schema', 'get_common_cols', 'get_minus_cols', 'traverse_cycle', 'find_ingress_nodes',
-           'find_egress_node', 'create_iter_graph']
+           'find_egress_node', 'create_iter_graph', 'get_graph_hash']
 
 # %% ../nbs/30_graph_utils.ipynb 2
 import networkx as nx
@@ -147,3 +147,8 @@ def create_iter_graph(
     change_node_key(iter_graph, anchor, f"iter_{anchor}")
     iter_graph.nodes[f"iter_{anchor}"]["anchor"] = True
     return iter_graph
+
+
+def get_graph_hash(graph: nx.DiGraph) -> str:
+    """Returns a hash of the graph"""
+    return nx.weisfeiler_lehman_graph_hash(graph)

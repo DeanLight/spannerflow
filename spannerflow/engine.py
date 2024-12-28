@@ -24,7 +24,7 @@ from google.protobuf.json_format import MessageToDict
 
 from .config import Config
 from .dataflow.v1 import dataflow_pb2, dataflow_pb2_grpc
-from .graph_utils import find_output
+from .graph_utils import find_output, get_graph_hash
 from .grpc_server import FunctionService
 from .span import Span
 
@@ -107,6 +107,7 @@ class Engine:
         self._is_python_server_running = False
         self._rust_server_process: None | subprocess.Popen = None
         self._python_grpc_server: None | grpc.server = None
+        self._dataflow_cache: dict[str, tuple[Path, str, list[str]]] = dict()
 
         port_1, port_2 = self.find_server_ports()
         self._config = Config(DATAFLOW_PORT=port_1, LISTEN_PORT=port_2)
@@ -114,6 +115,22 @@ class Engine:
         self._run_rust_server_in_background()
         self._run_python_server_in_background()
         time.sleep(1)
+
+    def _get_from_cache(self, graph: nx.DiGraph) -> tuple[Path, str, list[str]] | None:
+        hash = get_graph_hash(graph)
+        return self._dataflow_cache.get(hash)
+
+    def _add_to_cache(
+        self, graph: nx.DiGraph, so_path: Path, fn_name: str, schema_types: list[str]
+    ) -> None:
+        hash = get_graph_hash(graph)
+        self._dataflow_cache[hash] = (so_path, fn_name, schema_types)
+
+    def get_cache(self):
+        return self._dataflow_cache
+
+    def set_cache(self, cache):
+        self._dataflow_cache = cache
 
     def find_server_ports(self) -> tuple[int, int]:
         port_1 = None
@@ -329,7 +346,14 @@ class Engine:
     def run_dataflow(
         self, reversed_graph: nx.DiGraph, output_csv_path: str | None = None
     ) -> Generator[list[str], None, None]:
-        so_path, fn_name = self._rust_dataflow.build_so(reversed_graph)
+        if cached := self._get_from_cache(reversed_graph):
+            so_path, fn_name, schema_types = cached
+        else:
+            so_path, fn_name = self._rust_dataflow.build_so(reversed_graph)
+            schema_types = reversed_graph.graph["nodes_schema_types_dict"][
+                find_output(reversed_graph)
+            ]
+            self._add_to_cache(reversed_graph, so_path, fn_name, schema_types)
 
         with grpc.insecure_channel(self._config.DATAFLOW_ADDRESS) as channel:
             stub = dataflow_pb2_grpc.DataflowServiceStub(channel)
@@ -340,9 +364,7 @@ class Engine:
             if output_csv_path is not None:
                 request.output_csv_path = output_csv_path
             response_iterator = stub.RunDataflow(request)
-            schema_types = reversed_graph.graph["nodes_schema_types_dict"][
-                find_output(reversed_graph)
-            ]
+
             for response in response_iterator:
                 yield deserialize_row(
                     schema_types, [str(item) for item in response.row]
