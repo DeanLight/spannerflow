@@ -22,8 +22,6 @@ pub mod dataflow {
     tonic::include_proto!("dataflow.v1");
 }
 
-mod std_ie_functions;
-use std_ie_functions::*;
 extern crate rust_span;
 use rust_span::*;
 
@@ -117,7 +115,6 @@ fn run_agg_function(address: String, function_name: String, data: Vec<Vec<String
 
 #[no_mangle]
 pub extern "Rust" fn query_{{query_id}}(collections: &HashMap<String, Vec<Vec<String>>>) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>>{
-    env_logger::init();
     info!("Started Running");
     {% for key,value in sources.items() %}
         {% if value["op"] == "get_rel" %}let collection_{{ value['name'] }} = collections.get("{{ value['name'] }}").unwrap().clone();{% endif %}

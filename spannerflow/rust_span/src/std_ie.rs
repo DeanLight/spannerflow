@@ -1,35 +1,85 @@
+/// This module provides various functions for working with spans and regular expressions.
+/// It includes functions for matching, splitting, and deconstructing spans, as well as
+/// reading spans from files.
+///
+/// # Functions
+///
+/// - `rgx`: Matches a regex pattern against a text and returns an iterator over vectors of spans.
+/// - `rgx_str_span`: Matches a regex pattern against a text and returns an iterator over vectors of spans.
+/// - `rgx_span_span`: Matches a regex pattern against a span and returns an iterator over vectors of spans.
+/// - `span_as_str`: Converts a span to a string and returns an iterator over the string.
+/// - `span_contained`: Checks if one span is contained within another and returns an iterator over a boolean.
+/// - `deconstruct_span`: Deconstructs a span into its name, start, and end positions and returns an iterator over a tuple.
+/// - `rgx_is_match_str`: Checks if a regex pattern matches a text and returns an iterator over a boolean.
+/// - `rgx_is_match_span`: Checks if a regex pattern matches a span and returns an iterator over a boolean.
+/// - `rgx_split`: Splits a text based on a regex delimiter and returns an iterator over tuples of spans.
+/// - `rgx_split_str`: Splits a text based on a regex delimiter and returns an iterator over tuples of spans.
+/// - `rgx_split_span`: Splits a span based on a regex delimiter and returns an iterator over tuples of spans.
+/// - `read_span`: Reads a span from a file and returns an iterator over the span.
+///
+/// # Examples
+///
+/// ```
+/// use std::sync::Arc;
+/// use crate::span::{Span, from_span};
+///
+/// let s = "aaaaa@bbbbbbaa@bb";
+/// let span = Span::new(Arc::new(s.to_string()), 0, s.len(), "".to_string());
+///
+/// assert_eq!(rgx_str_span("(?P<c>(?P<a>a*)@(?P<b>b*))", s).collect::<Vec<_>>(),
+/// vec![
+///     vec![from_span(&span, 0, 12), from_span(&span, 0, 5), from_span(&span, 6, 12)],
+///     vec![from_span(&span, 12, 17), from_span(&span, 12, 14), from_span(&span, 15, 17)]
+/// ]);
+/// ```
 use std::sync::Arc;
-use fancy_regex::Regex;
+use pcre2::bytes::{Regex, CaptureLocations};
+use pcre2::bytes::Regex as Pcre2Regex;
+use fancy_regex::Regex as FancyRegex;
+use crate::span::{Span, from_span};
 
-extern crate rust_span;
-use rust_span::{from_span, Span};
 
-
+/// Matches a regex pattern against a text and returns an iterator over vectors of spans.
+/// 
+/// # Arguments
+/// 
+/// * `pattern` - A string slice that holds the regex pattern.
+/// * `text` - A string slice that holds the text to be matched against the pattern.
+/// * `span` - A reference to a `Span` object that represents the span of the text.
+/// 
+/// # Returns
+/// 
+/// An iterator over vectors of spans. Each vector represents a match and its capturing groups.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use std::sync::Arc;
+/// use crate::span::{Span, from_span};
+/// 
+/// let s = "aaaaa@bbbbbbaa@bb";
+/// let span = Span::new(Arc::new(s.to_string()), 0, s.len(), "".to_string());
+/// 
+/// let matches: Vec<Vec<Span>> = rgx("(?P<c>(?P<a>a*)@(?P<b>b*))", s, &span).collect();
+/// assert_eq!(matches, vec![
+///     vec![from_span(&span, 0, 12), from_span(&span, 0, 5), from_span(&span, 6, 12)],
+///     vec![from_span(&span, 12, 17), from_span(&span, 12, 14), from_span(&span, 15, 17)]
+/// ]);
+/// ```
 fn rgx(pattern: &str, text: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
-    let re = Regex::new(pattern).unwrap();
-    let mut outer_vec = Vec::new();
-    let mut start = 0;
-    // Use a loop to manually iterate over matches
-    while let Ok(Some(caps)) = re.captures_from_pos(text, start) {
-        let mut inner_vec = Vec::new();
-        if caps.len() == 1 {
-            if let Some(m) = caps.get(0) {
-                inner_vec.push(from_span(span, m.start(), m.end()));
-                start = m.end(); // Move to the end of the current match
-            }
+    let re = Pcre2Regex::new(pattern).unwrap();
+    let text_bytes = text.as_bytes();
+    re.captures_iter(text_bytes)
+    .filter_map(|cap_result| cap_result.ok())
+    .map(|captures| {
+        if captures.len() == 1 {
+            vec![captures.get(0).map(|m| from_span(&span, m.start(), m.end())).unwrap()]
         } else {
-            for i in 1..caps.len() {
-            if let Some(m) = caps.get(i) {
-                inner_vec.push(from_span(span, m.start(), m.end()));
-            }
-            }
-            if let Some(m) = caps.get(0) {
-            start = m.end(); // Move to the end of the current match
-            }
+            (1..captures.len()).map(|i| {
+                captures.get(i).map(|m| from_span(&span, m.start(), m.end())).unwrap()
+            }).collect()
         }
-        outer_vec.push(inner_vec);
-    }
-    outer_vec.into_iter()
+    }).collect::<Vec<_>>().into_iter()
 }
 
 
@@ -62,7 +112,8 @@ pub fn deconstruct_span(span: &Span) -> impl Iterator<Item= (String, i32, i32)>{
 }
 
 pub fn rgx_is_match_str(delim: &str, text: &str)-> impl Iterator<Item= bool>{
-    return std::iter::once(Regex::new(delim).unwrap().is_match(text).unwrap_or(false));
+    let text_bytes = text.as_bytes();
+    return std::iter::once(Regex::new(delim).unwrap().is_match(text_bytes).unwrap_or(false));
 }
 
 pub fn rgx_is_match_span(delim: &str, span: &Span)-> impl Iterator<Item= bool>{
@@ -106,18 +157,17 @@ pub fn rgx_split_str(delim: &str, text: &str, intial_tag: &str)-> impl Iterator<
 }
 
 pub fn rgx_split_span(delim: &str, span: &Span, intial_tag: &str)-> impl Iterator<Item= (Span, Span)>{
-    rgx_split(delim, &span.get_doc(), intial_tag, span)
+    rgx_split(delim, &span.as_str(), intial_tag, span)
 }
 
 pub fn read_span(text_path: &str) -> impl Iterator<Item = Span> {
     std::iter::once(Span::from_path(text_path))
 }
 
+
 #[cfg(test)]
-mod tests {
+mod tests{
     use super::*;
-    extern crate rust_span;
-    use rust_span::Span;
     use std::fs::File;
     use std::io::Write;
     use std::fs;
@@ -283,8 +333,8 @@ mod tests {
         let span: Span = Span::new(doc, 0, 93 , "".to_string());
         let subspan1 = from_span(&span, 0, 43);
         let subspan2 = from_span(&span, 44, 93);
-        println!("Subspan: {}", subspan1.as_str());
-        println!("Subspan: {}", subspan2.as_str());
+        println!("Subspan: {:?}", subspan1);
+        println!("Subspan: {:?}", subspan2);
 
         let patt = r"(?i)(?:(?:(?:test(?:\S+)?)?positive(?: for)?|notif(?:y|ied) of positive (?:results?|test(?:\S+)?|status))(?: (?!)\S+)*? COVID-19)";
         let result1 = rgx_span_span(patt, &subspan1).collect::<Vec<_>>();
@@ -294,8 +344,5 @@ mod tests {
         println!("{:?}", result2[0][0]);
         assert_eq!(result2.len(), 1);
         assert_eq!(result2[0][0], from_span(&span, 71, 92))
-
-        
     }
-
 }

@@ -9,6 +9,7 @@ crate-type = ["dylib"]
 [dependencies]
 lazy_static = { workspace = true }
 fancy-regex = { workspace = true }
+pcre2 = { workspace = true }
 sha1 = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
