@@ -92,6 +92,7 @@ setuptools.setup(
         RustExtension(
             "spannerflow.rust_grpc_server",
             "spannerflow/rust_server/Cargo.toml",
+            args=["--release"],
             features=[],
             binding=Binding.Exec,
         )

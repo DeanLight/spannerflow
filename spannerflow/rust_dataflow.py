@@ -814,7 +814,9 @@ class RustDataflow:
 
         self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
-        env["RUSTFLAGS"] = "-C prefer-dynamic"
+        env["RUSTFLAGS"] = (
+            f"-C prefer-dynamic -C link-arg=-Wl,-rpath,{self._config.PACKAGE_ROOT.joinpath('target', 'release', 'deps')}"
+        )
         with open(log_path, "a") as log_file:
             subprocess.run(
                 command,
