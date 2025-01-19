@@ -805,8 +805,8 @@ class RustDataflow:
         command = [
             "cargo",
             "build",
-            "--manifest-path",
             "--release",
+            "--manifest-path",
             str(cargo_toml_path),
             "-p",
             "spannerflow",
