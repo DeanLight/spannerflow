@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::env;
-use csv;
 
-use log::{debug, error, log_enabled, info, Level};
+use log::{error, info};
 
 use libloading::{Library, Symbol};
 
@@ -29,7 +28,7 @@ lazy_static::lazy_static! {
 #[derive(Debug, Default)]
 pub struct MyDataflowService {}
 
-fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool {
+fn validate_schema(schema: &[dataflow::DataType], row: &[String]) -> bool {
     if schema.len() != row.len() {
         return false;
     }
@@ -98,7 +97,7 @@ impl DataflowService for MyDataflowService {
             }
             let span = doc[req.start as usize..req.end as usize].to_string();
             let reply = GetSpanResponse {
-                span: span,
+                span,
             };
             let response = Response::new(reply);
             info!("{:?}", response);
@@ -172,11 +171,14 @@ impl DataflowService for MyDataflowService {
 
         let req = request.into_inner();
         let mut delimiter = b',';
-        if req.delimiter.len() > 1 {
-            return Err(Status::invalid_argument("Delimiter must be a single character"));
-        }
-        else if req.delimiter.len() == 1 {
-            delimiter = req.delimiter[0];
+        match req.delimiter.len().cmp(&1) {
+            std::cmp::Ordering::Greater => {
+                return Err(Status::invalid_argument("Delimiter must be a single character"));
+            }
+            std::cmp::Ordering::Equal => {
+                delimiter = req.delimiter[0];
+            }
+            std::cmp::Ordering::Less => {}
         }
         let collections = COLLECTIONS.lock().await;
         if let Some(vec) = collections.get(&req.collection_name) {
@@ -222,11 +224,14 @@ impl DataflowService for MyDataflowService {
 
         let req = request.into_inner();
         let mut delimiter = b',';
-        if req.delimiter.len() > 1 {
-            return Err(Status::invalid_argument("Delimiter must be a single character"));
-        }
-        else if req.delimiter.len() == 1 {
-            delimiter = req.delimiter[0];
+        match req.delimiter.len().cmp(&1) {
+            std::cmp::Ordering::Greater => {
+                return Err(Status::invalid_argument("Delimiter must be a single character"));
+            }
+            std::cmp::Ordering::Equal => {
+                delimiter = req.delimiter[0];
+            }
+            std::cmp::Ordering::Less => {}
         }
         let mut collections = COLLECTIONS.lock().await;
         let mut schemas = SCHEMAS.lock().await;
@@ -296,7 +301,7 @@ impl DataflowService for MyDataflowService {
         let collections = COLLECTIONS.lock().await;
         if let Some(vec) = collections.get(&req.collection_name) {
             let responses: Vec<Result<GetCollectionResponse, Status>> = vec.iter().cloned().map(|row| {
-                Ok(GetCollectionResponse { row: row })
+                Ok(GetCollectionResponse { row })
             }).collect();
             info!("{:?}", responses);
             let stream = iter(responses);
@@ -454,7 +459,7 @@ impl DataflowService for MyDataflowService {
         let req = request.into_inner();
         
         if let Ok(vec) = run_dataflow_so(req.so_path, req.fn_name).await {
-            if req.output_csv_path.len() > 0 {
+            if !req.output_csv_path.is_empty() {
                 let mut wtr = csv::WriterBuilder::new()
                     .delimiter(b',')
                     .from_path(req.output_csv_path).map_err(|e| {
@@ -475,7 +480,7 @@ impl DataflowService for MyDataflowService {
             }
             else {
                 let responses: Vec<Result<RunDataflowResponse, Status>> = vec.iter().cloned().map(|row| {
-                    Ok(RunDataflowResponse { row: row })
+                    Ok(RunDataflowResponse { row })
                 }).collect();
         
                 info!("{:?}", responses);
@@ -513,7 +518,8 @@ async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<Str
             error!("Failed to load library from path {}: {:?}", so_path, e);
             Status::not_found("Failed to load shared library")
         })?;
-        let function: Symbol<unsafe extern "Rust" fn(&HashMap<String, Vec<Vec<String>>>) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>>> = match lib.get(fn_name.as_bytes()) {
+        type MyFunctionType = unsafe extern "Rust" fn(&HashMap<String, Vec<Vec<String>>>) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>>;
+        let function: Symbol<MyFunctionType> = match lib.get(fn_name.as_bytes()) {
             Ok(func) => func,
             Err(e) => {
                 error!("Failed to get function {}: {:?}", fn_name, e);
@@ -525,7 +531,7 @@ async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<Str
         // Acquire the lock on collections
         let collections_guard = COLLECTIONS.lock().await;
 
-        let output: Vec<Vec<String>> = match function(&*collections_guard) {
+        let output: Vec<Vec<String>> = match function(&collections_guard) {
             Ok(output) => output,
             Err(e) => {
                 error!("Failed to run function {}: {:?}", fn_name, e);
@@ -534,6 +540,6 @@ async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<Str
         };
         // Drop the library immediately after using it
         std::mem::drop(lib);
-        return Ok(output)
+        Ok(output)
     }
 }

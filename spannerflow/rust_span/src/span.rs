@@ -1,34 +1,25 @@
 use std::collections::HashMap;
 use std::cmp::Ordering;
-use std::hash::Hash;
 use std::sync;
 use std::sync::Arc;
 use std::str::FromStr;
 use sha1::{Sha1, Digest};
-use hex;
 use fancy_regex::Regex as FancyRegex;
 
 lazy_static::lazy_static! {
-    // change id to string, value need to be Arc<string>
     static ref DOCUMENTS: sync::Mutex<HashMap<String, sync::Arc<String>>> = sync::Mutex::new(HashMap::new());
 }
 
-// change id to string, change to dylib - change to get/add: if exists return pointer if not, create one.
 #[no_mangle]
 pub fn add_document(id: String, doc: sync::Arc<String>) {
     let mut documents = DOCUMENTS.lock().unwrap();
-    //println!("Adding document: {}", documents.len());
     documents.insert(id, doc);
 }
-// change to get_span - input id, start, end- return copy of substring of document. expose this to the API
+
 #[no_mangle]
 pub fn get_document(id: String) -> Option<sync::Arc<String>> {
     let documents = DOCUMENTS.lock().unwrap();
-    //println!("getting document: {}", documents.len());
-    match documents.get(&id) {
-        Some(doc) => Some(sync::Arc::clone(doc)),
-        None => None,
-    }
+    documents.get(&id).map(sync::Arc::clone)
 }
 
 
@@ -46,7 +37,7 @@ pub enum SpanParseError {
 }
 
 /// A struct that represents a span of text in a document.
-#[derive(Clone, Serialize, Deserialize, Hash)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Span {
     doc: Arc<String>,
     start: usize,
@@ -55,7 +46,6 @@ pub struct Span {
 }
 
 impl Span {
-    /// 
     pub fn new(doc: Arc<String>, start: usize, end: usize, name: String) -> Span {
         let mut span_name = name;
         if span_name.is_empty() {
@@ -105,6 +95,10 @@ impl Span {
         
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn len(&self) -> usize {
         self.end - self.start
     }
@@ -140,16 +134,15 @@ impl FromStr for Span {
             let start = caps.get(2).unwrap().as_str().parse::<usize>().unwrap();
             let end = caps.get(3).unwrap().as_str().parse::<usize>().unwrap();
             let text = caps.get(4).unwrap().as_str().to_string();
-            // println!("name: {}, start: {}, end: {} text: {}", name.clone(), start, end, text);
             let document = get_document(name.clone());
             match document {
                 Some(doc) => {
-                    return Ok(Span::new(doc, start, end, name));
+                    Ok(Span::new(doc, start, end, name))
                 },
                 None => {
                     let doc = Arc::new(text.clone());
                     add_document(name.clone(), text.clone().into());
-                    return Ok(Span::new(doc, start, end, name));
+                    Ok(Span::new(doc, start, end, name))
                 }
             }
         }
@@ -157,10 +150,7 @@ impl FromStr for Span {
             eprintln!("Invalid format for span: {}", s);
             Err(SpanParseError::InvalidFormat)
         }
-        // regex extraction of span paramters.
-        // check if documentid exists in documet registry
-        // if not add document to registry
-        // return span with arc<string> to the document      
+
     }
 }
 
@@ -176,13 +166,13 @@ impl std::fmt::Display for Span {
     }
 }
 
-impl<'a> PartialEq for Span {
+impl PartialEq for Span {
     fn eq(&self, other: &Self) -> bool {
         self.start == other.start && self.end == other.end && self.name == other.name
     }
 }
 
-impl<'a> Eq for Span {}
+impl Eq for Span {}
 
 impl PartialOrd for Span {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

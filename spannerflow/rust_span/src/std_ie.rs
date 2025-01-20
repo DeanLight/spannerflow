@@ -33,9 +33,7 @@
 /// ]);
 /// ```
 use std::sync::Arc;
-use pcre2::bytes::{Regex, CaptureLocations};
-use pcre2::bytes::Regex as Pcre2Regex;
-use fancy_regex::Regex as FancyRegex;
+use pcre2::bytes::Regex;
 use crate::span::{Span, from_span};
 
 
@@ -67,16 +65,16 @@ use crate::span::{Span, from_span};
 /// ]);
 /// ```
 fn rgx(pattern: &str, text: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
-    let re = Pcre2Regex::new(pattern).unwrap();
+    let re = Regex::new(pattern).unwrap();
     let text_bytes = text.as_bytes();
     re.captures_iter(text_bytes)
     .filter_map(|cap_result| cap_result.ok())
     .map(|captures| {
         if captures.len() == 1 {
-            vec![captures.get(0).map(|m| from_span(&span, m.start(), m.end())).unwrap()]
+            vec![captures.get(0).map(|m| from_span(span, m.start(), m.end())).unwrap()]
         } else {
             (1..captures.len()).map(|i| {
-                captures.get(i).map(|m| from_span(&span, m.start(), m.end())).unwrap()
+                captures.get(i).map(|m| from_span(span, m.start(), m.end())).unwrap()
             }).collect()
         }
     }).collect::<Vec<_>>().into_iter()
@@ -91,7 +89,7 @@ pub fn rgx_str_span(pattern: &str, text: &str) -> impl Iterator<Item = Vec<Span>
 }
 
 pub fn rgx_span_span(pattern: &str, span: &Span) -> impl Iterator<Item = Vec<Span>> {
-    rgx(pattern, &span.as_str(), span)
+    rgx(pattern, span.as_str(), span)
 }
 
 pub fn span_as_str(span: &Span) -> impl Iterator<Item = String> {
@@ -100,20 +98,20 @@ pub fn span_as_str(span: &Span) -> impl Iterator<Item = String> {
 
 pub fn span_contained(span1: &Span, span2: &Span) -> impl Iterator<Item= bool> {
     if span1.get_name() == span2.get_name() && span1.get_start() >= span2.get_start() && span1.get_end() <= span2.get_end() {
-        return std::iter::once(true);
+        std::iter::once(true)
     }
     else{
-        return std::iter::once(false);
+        std::iter::once(false)
     }
 }
 
 pub fn deconstruct_span(span: &Span) -> impl Iterator<Item= (String, i32, i32)>{
-    return std::iter::once((span.get_name(), span.get_start() as i32, span.get_end() as i32));
+    std::iter::once((span.get_name(), span.get_start() as i32, span.get_end() as i32))
 }
 
 pub fn rgx_is_match_str(delim: &str, text: &str)-> impl Iterator<Item= bool>{
     let text_bytes = text.as_bytes();
-    return std::iter::once(Regex::new(delim).unwrap().is_match(text_bytes).unwrap_or(false));
+    std::iter::once(Regex::new(delim).unwrap().is_match(text_bytes).unwrap_or(false))
 }
 
 pub fn rgx_is_match_span(delim: &str, span: &Span)-> impl Iterator<Item= bool>{
@@ -121,12 +119,11 @@ pub fn rgx_is_match_span(delim: &str, span: &Span)-> impl Iterator<Item= bool>{
 }
 
 fn rgx_split(delim: &str, text: &str, intial_tag: &str, base_span: &Span)-> impl Iterator<Item= (Span, Span)>{
-    let init_span: Span;
-    if intial_tag.is_empty(){
-        init_span = Span::new(Arc::<String>::new("Start Tag".to_string()), 0, "Start Tag".len(), "".to_string());
+    let init_span: Span = if intial_tag.is_empty(){
+        Span::new(Arc::<String>::new("Start Tag".to_string()), 0, "Start Tag".len(), "".to_string())
     } else {
-        init_span = Span::new(Arc::<String>::new(intial_tag.to_string()), 0, intial_tag.len(), "".to_string());
-    }
+        Span::new(Arc::<String>::new(intial_tag.to_string()), 0, intial_tag.len(), "".to_string())
+    };
 
     let mut matches = rgx_str_span(delim, text);
     let mut results = Vec::new();
@@ -136,15 +133,15 @@ fn rgx_split(delim: &str, text: &str, intial_tag: &str, base_span: &Span)-> impl
         None => return results.into_iter(),
     };
     if first_span.get_start() != 0 {
-        results.push((init_span, from_span(&base_span, 0, first_span.get_start())));
+        results.push((init_span, from_span(base_span, 0, first_span.get_start())));
     }
 
     let mut prev_span = first_span;
     for curr_match in matches.map(|vec| vec[0].clone()) {
-        results.push((prev_span.clone(), from_span(&base_span, prev_span.get_end(), curr_match.get_start())));
+        results.push((prev_span.clone(), from_span(base_span, prev_span.get_end(), curr_match.get_start())));
         prev_span = curr_match;
     }
-    results.push((prev_span.clone(), from_span(&base_span, prev_span.get_end(), base_span.get_end())));
+    results.push((prev_span.clone(), from_span(base_span, prev_span.get_end(), base_span.get_end())));
     results.into_iter()
 }
 
@@ -157,7 +154,7 @@ pub fn rgx_split_str(delim: &str, text: &str, intial_tag: &str)-> impl Iterator<
 }
 
 pub fn rgx_split_span(delim: &str, span: &Span, intial_tag: &str)-> impl Iterator<Item= (Span, Span)>{
-    rgx_split(delim, &span.as_str(), intial_tag, span)
+    rgx_split(delim, span.as_str(), intial_tag, span)
 }
 
 pub fn read_span(text_path: &str) -> impl Iterator<Item = Span> {
