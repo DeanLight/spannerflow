@@ -20,7 +20,6 @@ jobs:
 
       - name: Rust Lint
         run: |
-          cargo generate-lockfile --config version=3
-          cargo marker check -- -p spannerflow_rust -p rust_span --release
+          cargo generate-lockfile --config version=3 && cargo marker check -- -p spannerflow_rust -p rust_span --release
           cargo clippy -p spannerflow_rust -p rust_span --release
         working-directory: ./spannerflow
