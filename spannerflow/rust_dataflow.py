@@ -791,7 +791,7 @@ class RustDataflow:
             lib_filename = f"{crate_name}{extension}"
         else:
             raise RuntimeError("Unsupported OS")
-        lib_path = self._config.PACKAGE_ROOT.joinpath("target", "release", lib_filename)
+        lib_path = self._config.RUST_TARGET_PATH.joinpath(lib_filename)
         new_lib_path = self._config.GENERATED_RUST_PROJECT_PATH.joinpath(
             f"{timestamp}{extension}"
         )
@@ -814,9 +814,7 @@ class RustDataflow:
 
         self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
-        env["RUSTFLAGS"] = (
-            f"-C prefer-dynamic -C link-arg=-Wl,-rpath,{self._config.PACKAGE_ROOT.joinpath('target', 'release', 'deps')}"
-        )
+        env["RUSTFLAGS"] = "-C prefer-dynamic"
         with open(log_path, "a") as log_file:
             subprocess.run(
                 command,

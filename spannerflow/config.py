@@ -23,6 +23,7 @@ class Config:
         "src", "latest.rs"
     )
     RUST_SERVER_PATH: Path = PACKAGE_ROOT.joinpath("rust_grpc_server")
+    RUST_TARGET_PATH: Path = PACKAGE_ROOT.joinpath("target", "release")
     TEMPLATES_PATH: Path = PACKAGE_ROOT.joinpath("templates")
     RUST_FILE_TEMPLATE_NAME: str = "rust_dataflow.rs.jinja2"
     LOGS_DIR: Path = Path(__file__).parent.joinpath("logs")
