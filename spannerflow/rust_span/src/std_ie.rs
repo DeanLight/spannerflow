@@ -115,7 +115,7 @@ pub fn rgx_is_match_str(delim: &str, text: &str)-> impl Iterator<Item= bool>{
 }
 
 pub fn rgx_is_match_span(delim: &str, span: &Span)-> impl Iterator<Item= bool>{
-    return rgx_is_match_str(delim, span.as_str());
+    rgx_is_match_str(delim, span.as_str())
 }
 
 fn rgx_split(delim: &str, text: &str, intial_tag: &str, base_span: &Span)-> impl Iterator<Item= (Span, Span)>{

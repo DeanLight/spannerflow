@@ -38,6 +38,7 @@ pub enum SpanParseError {
 }
 
 /// A struct that represents a span of text in a document.
+#[allow(clippy::derived_hash_with_manual_eq)]
 #[derive(Clone, Serialize, Deserialize, Hash)]
 pub struct Span {
     doc: Arc<String>,
