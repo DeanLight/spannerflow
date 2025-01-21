@@ -92,6 +92,7 @@ setuptools.setup(
         RustExtension(
             "spannerflow.rust_grpc_server",
             "spannerflow/rust_server/Cargo.toml",
+            rustc_flags=["-C", "prefer-dynamic"],
             debug=False,
             features=[],
             binding=Binding.Exec,
