@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::sync;
+use std::hash::Hash;
 use std::sync::Arc;
 use std::str::FromStr;
 use sha1::{Sha1, Digest};
@@ -37,7 +38,7 @@ pub enum SpanParseError {
 }
 
 /// A struct that represents a span of text in a document.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Hash)]
 pub struct Span {
     doc: Arc<String>,
     start: usize,
