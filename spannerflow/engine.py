@@ -182,7 +182,10 @@ class Engine:
             self._config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
             with open(self._config.RUST_SERVER_LOG_PATH, "a") as log_file:
                 env = os.environ.copy()
+                # for MacOS
                 env["DYLD_LIBRARY_PATH"] = str(self._config.RUST_TARGET_PATH)
+                # for Linux
+                env["LD_LIBRARY_PATH"] = str(self._config.RUST_TARGET_PATH)
                 env["BIND_PORT"] = str(self._config.DATAFLOW_PORT)
                 env["RUST_LOG"] = "trace"
                 env["RUST_LOG_STYLE"] = "never"
