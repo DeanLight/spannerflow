@@ -214,7 +214,7 @@ class Span(UserString):
     @staticmethod
     def deserialize_span(span_str: str):
         SPAN_PATTERN = (
-            r"^\[@(?P<doc_id>.*),(?P<start>\d+),(?P<end>\d+)\) \"(?P<text>.*)\"$"
+            r"^\[@(?P<doc_id>.*),(?P<start>\d+),(?P<end>\d+)\) \"(?P<text>(.|\s)*)\"$"
         )
         matches = re.match(SPAN_PATTERN, span_str)
         if matches is None:
