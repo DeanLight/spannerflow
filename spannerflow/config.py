@@ -30,6 +30,7 @@ class Config:
     RUST_SERVER_LOG_PATH: Path = LOGS_DIR.joinpath("rust_server.log")
     RUST_SERVER_BUILD_LOG_PATH: Path = LOGS_DIR.joinpath("rust_server_build.log")
     RUST_SO_BUILD_LOG_PATH: Path = LOGS_DIR.joinpath("rust_so_build.log")
+    FEATURE_CACHE: bool = False
 
     @property
     def LISTEN_ADDRESS(self) -> str:

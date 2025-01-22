@@ -350,7 +350,8 @@ class Engine:
     def run_dataflow(
         self, reversed_graph: nx.DiGraph, output_csv_path: str | None = None
     ) -> Generator[list[str], None, None]:
-        if cached := self._get_from_cache(reversed_graph):
+        cached = self._get_from_cache(reversed_graph)
+        if self._config.FEATURE_CACHE and cached is not None:
             so_path, fn_name, schema_types = cached
         else:
             so_path, fn_name = self._rust_dataflow.build_so(reversed_graph)
