@@ -126,6 +126,9 @@ class FunctionService(dataflow_pb2_grpc.FunctionServiceServicer):
                     arg_type = func_in_scehma[i]
                     if arg_type is Span:
                         row.append(Span.deserialize_span(cell))
+                    elif arg_type is object:
+                        # TODO: support more types
+                        row.append(cell)
                     else:
                         row.append(arg_type(cell))
                 rows.append(row)
