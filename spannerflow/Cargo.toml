@@ -19,8 +19,8 @@ fancy-regex = "0.14.0"
 serde = { version = "1.0.216", features = ["derive", "rc"] }
 serde_derive = "1.0.215"
 sha1 = "0.10.6"
-timely = "0.16.1"
-differential-dataflow = "0.13.1"
+timely = "0.17.0"
+differential-dataflow = "0.13.4"
 tokio = { version = "1.41.1", features = ["full"] }
 tokio-stream = "0.1.16"
 tonic = "0.12.3"
