@@ -1,0 +1,25 @@
+[package]
+name = "spannerflow"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["dylib"]
+path = "src/latest.rs"
+
+[dependencies]
+timely = { workspace = true }
+differential-dataflow = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+tonic = { workspace = true }
+fancy-regex = { workspace = true }
+futures = { workspace = true }
+ordered-float = { workspace = true }
+tokio = { workspace = true }
+rust_span = { path = "../rust_span" }
+log = { workspace = true }
+env_logger = { workspace = true }
+
+[build-dependencies]
+tonic-build = "0.12.3"

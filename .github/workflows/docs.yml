@@ -1,0 +1,46 @@
+name: pytest-coverage-comment
+
+on: [pull_request]
+    
+permissions:
+  contents: write
+  checks: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetching base branch
+        run: |
+            git fetch -u origin ${{ github.head_ref }}:${{ github.head_ref }}
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+      
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools setuptools-rust
+          pip install '.[dev]'
+      - name: Build Docs
+        run: |
+          nbdev_docs
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ github.token }}
+          force_orphan: true
+          publish_dir: ./_docs
+          # The following lines assign commit authorship to the official GH-Actions bot for deploys to `gh-pages` branch.
+          # You can swap them out with your own user credentials.
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
