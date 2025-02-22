@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://DeanLight.github.io/spannerflow/index.html</loc>
+    <lastmod>2025-02-22T23:26:50.215Z</lastmod>
+  </url>
+  <url>
+    <loc>https://DeanLight.github.io/spannerflow/span.html</loc>
+    <lastmod>2025-02-22T23:26:50.223Z</lastmod>
+  </url>
+  <url>
+    <loc>https://DeanLight.github.io/spannerflow/engine.html</loc>
+    <lastmod>2025-02-22T23:26:50.167Z</lastmod>
+  </url>
+  <url>
+    <loc>https://DeanLight.github.io/spannerflow/rust_dataflow.html</loc>
+    <lastmod>2025-02-22T23:26:50.302Z</lastmod>
+  </url>
+  <url>
+    <loc>https://DeanLight.github.io/spannerflow/graph_utils.html</loc>
+    <lastmod>2025-02-22T23:26:50.101Z</lastmod>
+  </url>
+  <url>
+    <loc>https://DeanLight.github.io/spannerflow/config.html</loc>
+    <lastmod>2025-02-22T23:26:50.138Z</lastmod>
+  </url>
+  <url>
+    <loc>https://DeanLight.github.io/spannerflow/grpc_server.html</loc>
+    <lastmod>2025-02-22T23:26:50.167Z</lastmod>
+  </url>
+  <url>
+    <loc>https://DeanLight.github.io/spannerflow/installations.html</loc>
+    <lastmod>2025-02-22T23:26:50.286Z</lastmod>
+  </url>
+</urlset>
