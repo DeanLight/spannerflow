@@ -19,5 +19,9 @@ jobs:
           install-only: true
 
       - name: Rust Lint
-        run: cargo marker check
+        run: |
+          cargo generate-lockfile
+          sed -i 's/version = 4/version = 3/g' ./Cargo.lock
+          cargo marker check -- -p spannerflow_rust -p rust_span --release
+          cargo clippy -p spannerflow_rust -p rust_span --release
         working-directory: ./spannerflow

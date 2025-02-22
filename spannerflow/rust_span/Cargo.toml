@@ -1,0 +1,16 @@
+[package]
+name = "rust_span"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+lazy_static = { workspace = true }
+fancy-regex = { workspace = true }
+pcre2 = { workspace = true }
+sha1 = { workspace = true }
+hex = { workspace = true }
+serde = { workspace = true }
+serde_derive = { workspace = true }

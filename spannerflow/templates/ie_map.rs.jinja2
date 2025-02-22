@@ -8,14 +8,14 @@ let {{ output_node }} = {{ prev_node}}
                                     {% else %}key{% endif %}
                                     ));
                                 }
-                                match run_ie_function("{{ grpc_address }}".to_string(), "{{ function_name }}".to_string(), ie_input) {
+                                match run_ie_function("{{ grpc_address }}".to_string(), "{{ function_name }}".to_string(), ie_input, {{ in_arity }}, {{ out_arity }}) {
                                     Ok(results) => {
                                         for i in results {
                                             output.push((i, 1));
                                         }
                                     },
                                     Err(e) => {
-                                        eprintln!("Failed to run IE function: {}", e); // Log the error
+                                        error!("Failed to run IE function: {}", e); // Log the error
                                     }
                                 }                            
                             })

@@ -3,7 +3,11 @@ include LICENSE
 include CONTRIBUTING.md
 include README.md
 include spannerflow/Cargo.toml
+include spannerflow/Cargo.lock
 recursive-include spannerflow/templates *
-recursive-include spannerflow/src *
+recursive-include spannerflow/rust_server *
+recursive-include spannerflow/proto *
+recursive-include spannerflow/rust_lib *
+recursive-include spannerflow/rust_span *
+recursive-include spannerflow/target *
 recursive-exclude * __pycache__
-prune tests

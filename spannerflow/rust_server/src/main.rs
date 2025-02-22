@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::env;
-use csv;
 
+use log::{error, info};
 
 use libloading::{Library, Symbol};
 
@@ -12,7 +12,8 @@ use tokio_stream::StreamExt;
 
 use dataflow::dataflow_service_server::{DataflowService, DataflowServiceServer};
 use dataflow::{*};
-
+extern crate rust_span;
+use rust_span::{Span, get_document};
 
 pub mod dataflow {
     tonic::include_proto!("dataflow.v1");
@@ -21,12 +22,13 @@ pub mod dataflow {
 lazy_static::lazy_static! {
     static ref COLLECTIONS: Mutex<HashMap<String, Vec<Vec<String>>>> = Mutex::new(HashMap::new());
     static ref SCHEMAS: Mutex<HashMap<String, Vec<dataflow::DataType>>> = Mutex::new(HashMap::new());
-}
+    // change id to string, value need to be Arc<string>
+}    
 
 #[derive(Debug, Default)]
 pub struct MyDataflowService {}
 
-fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool {
+fn validate_schema(schema: &[dataflow::DataType], row: &[String]) -> bool {
     if schema.len() != row.len() {
         return false;
     }
@@ -43,6 +45,11 @@ fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool 
                 }
             }
             dataflow::DataType::Int => {
+                if value.parse::<i32>().is_err() {
+                    return false;
+                }
+            }
+            dataflow::DataType::Int64 => {
                 if value.parse::<i64>().is_err() {
                     return false;
                 }
@@ -55,23 +62,57 @@ fn validate_schema(schema: &Vec<dataflow::DataType>, row: &Vec<String>) -> bool 
             dataflow::DataType::Unspecified => {
                 return false;
             }
+            dataflow::DataType::Span => {
+                if value.parse::<Span>().is_err() {
+                    return false;
+                }
+                return true;
+            }
+            dataflow::DataType::Custom => {
+                return true;
+            }
         }
     }
     true
 }
-
 
 #[tonic::async_trait]
 impl DataflowService for MyDataflowService {
     
     type GetCollectionStream = tokio_stream::Iter<std::vec::IntoIter<Result<GetCollectionResponse, tonic::Status>>>;
     type RunDataflowStream = tokio_stream::Iter<std::vec::IntoIter<Result<RunDataflowResponse, tonic::Status>>>;
-    
+
+    async fn get_span(
+        &self,
+        request: Request<GetSpanRequest>,
+    ) -> Result<Response<GetSpanResponse>, Status> {
+        info!("Got a request: {:?}", request);
+
+        let req = request.into_inner();
+        
+        if let Some(doc) = get_document(req.id) {
+            log::debug!("Got a document len: {:?}", doc.len());
+            if req.start > req.end || req.start >= doc.len() as u32 || req.end > doc.len() as u32 {
+                return Err(Status::invalid_argument("Invalid start or end index"));
+            }
+            let span = doc[req.start as usize..req.end as usize].to_string();
+            let reply = GetSpanResponse {
+                span,
+            };
+            let response = Response::new(reply);
+            info!("{:?}", response);
+            Ok(response)
+        } else {
+            return Err(Status::not_found("Document not found"));
+        }
+    }
+
     async fn add_rows(
         &self,
         request: Request<tonic::Streaming<AddRowsRequest>>,
     ) -> Result<Response<()>, Status> {
-        println!("Got a streaming request: {:?}", request);
+        info!("Got a streaming request: {:?}", request);
+
         
         let mut stream = request.into_inner();  // Extract the stream
         let mut collection_name: Option<String> = None;
@@ -83,31 +124,28 @@ impl DataflowService for MyDataflowService {
         while let Some(req) = stream.next().await {
             match req {
                 Ok(message) => {
-                    println!("Received message: {:?}", message); // Debug log
                     if let Some(collection) = message.message_type {
                         match collection {
                             // Handle the collection name variant
                             dataflow::add_rows_request::MessageType::CollectionName(name) => {
-                                println!("Received collection name: {}", name); // Debug log
                                 collection_name = Some(name);
                             }
                             // Handle the row variant
                             dataflow::add_rows_request::MessageType::Row(row) => {
-                                println!("Received row: {:?}", row); // Debug log
                                 if let Some(ref name) = collection_name {
                                     if let Some(coll) = collections.get_mut(name) {
                                         if validate_schema(schemas.get(name).unwrap(), &row.row) {
                                             coll.push(row.row.clone());
                                         } else {
-                                            eprintln!("Invalid row schema for collection: {}", name);
+                                            error!("Invalid row schema for collection: {}", name);
                                             return Err(Status::invalid_argument("Invalid row schema"));
                                         }
                                     } else {
-                                        eprintln!("Collection not found: {}", name);
+                                        error!("Collection not found: {}", name);
                                         return Err(Status::not_found("Collection not found"));
                                     }
                                 } else {
-                                    eprintln!("Collection name not found");
+                                    error!("Collection name not found");
                                     return Err(Status::invalid_argument("Collection name not found"));
                                 }
                             }
@@ -115,7 +153,7 @@ impl DataflowService for MyDataflowService {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Error receiving stream: {:?}", e);
+                    error!("Error receiving stream: {:?}", e);
                     return Err(Status::internal("Failed to receive stream"));
                 }
             }
@@ -129,33 +167,45 @@ impl DataflowService for MyDataflowService {
         &self,
         request: Request<SaveToCsvRequest>,
     ) -> Result<Response<()>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
         let req = request.into_inner();
+        let mut delimiter = b',';
+        match req.delimiter.len().cmp(&1) {
+            std::cmp::Ordering::Greater => {
+                return Err(Status::invalid_argument("Delimiter must be a single character"));
+            }
+            std::cmp::Ordering::Equal => {
+                delimiter = req.delimiter[0];
+            }
+            std::cmp::Ordering::Less => {}
+        }
         let collections = COLLECTIONS.lock().await;
         if let Some(vec) = collections.get(&req.collection_name) {
-            let mut wtr = csv::Writer::from_path(req.file_path).map_err(|e| {
-                eprintln!("Failed to create CSV writer: {:?}", e);
-                Status::internal("Failed to create CSV writer")
-            })?;
-
+            let mut wtr = csv::WriterBuilder::new()
+                .delimiter(delimiter)
+                .from_path(req.file_path).map_err(|e| {
+                    error!("Failed to create CSV writer: {:?}", e);
+                    Status::internal("Failed to create CSV writer")
+                })?;
             if let Some(schema) = SCHEMAS.lock().await.get(&req.collection_name) {
                 let mut csv_row = Vec::new();
                 for data_type in schema {
                     csv_row.push(data_type.as_str_name());
                 }
                 wtr.write_record(csv_row).map_err(|e| {
-                    eprintln!("Failed to write schema to CSV: {:?}", e);
+                    error!("Failed to write schema to CSV: {:?}", e);
                     Status::internal("Failed to write schema to CSV")
                 })?;
             }
             for row in vec {
                 wtr.write_record(row).map_err(|e| {
-                    eprintln!("Failed to write record to CSV: {:?}", e);
+                    error!("Failed to write record to CSV: {:?}", e);
                     Status::internal("Failed to write record to CSV")
                 })?;
             }
             wtr.flush().map_err(|e| {
-                eprintln!("Failed to flush CSV writer: {:?}", e);
+                error!("Failed to flush CSV writer: {:?}", e);
                 Status::internal("Failed to flush CSV writer")
             })?;
         } else {
@@ -170,48 +220,71 @@ impl DataflowService for MyDataflowService {
         &self,
         request: Request<LoadFromCsvRequest>,
     ) -> Result<Response<()>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
         let req = request.into_inner();
+        let mut delimiter = b',';
+        match req.delimiter.len().cmp(&1) {
+            std::cmp::Ordering::Greater => {
+                return Err(Status::invalid_argument("Delimiter must be a single character"));
+            }
+            std::cmp::Ordering::Equal => {
+                delimiter = req.delimiter[0];
+            }
+            std::cmp::Ordering::Less => {}
+        }
         let mut collections = COLLECTIONS.lock().await;
         let mut schemas = SCHEMAS.lock().await;
-        if collections.contains_key(&req.collection_name) || schemas.contains_key(&req.collection_name) {
+        if req.has_header && (collections.contains_key(&req.collection_name) || schemas.contains_key(&req.collection_name)) {
             return Err(Status::already_exists("Collection already exists"));
         }
-        let mut rdr = csv::Reader::from_path(req.file_path).map_err(|e| {
-            eprintln!("Failed to create CSV reader: {:?}", e);
-            Status::internal("Failed to create CSV reader")
-        })?;
+        let mut rdr = csv::ReaderBuilder::new()
+            .delimiter(delimiter)
+            .from_path(req.file_path).map_err(|e| {
+                error!("Failed to create CSV reader: {:?}", e);
+                Status::internal("Failed to create CSV reader")
+            })?;
         let mut schema = Vec::new();
-        match rdr.headers() {
-            Ok(header) => {
-                for field in header.iter() {
-                    // Assuming dataflow::DataType::from_str_name returns an Option or Result
-                    // Handle the unwrap safely if needed
-                    if let Some(data_type) = dataflow::DataType::from_str_name(field) {
-                        schema.push(data_type);
-                    } else {
-                        // Handle the case where from_str_name returns None
-                        eprintln!("Unknown data type in header: {}", field);
+        if req.has_header {
+            match rdr.headers() {
+                Ok(header) => {
+                    for field in header.iter() {
+                        // Assuming dataflow::DataType::from_str_name returns an Option or Result
+                        // Handle the unwrap safely if needed
+                        if let Some(data_type) = dataflow::DataType::from_str_name(field) {
+                            schema.push(data_type);
+                        } else {
+                            // Handle the case where from_str_name returns None
+                            error!("Unknown data type in header: {}", field);
+                        }
                     }
                 }
+                Err(e) => {
+                    error!("Failed to read CSV headers: {}", e);
+                    return Err(Status::internal("Failed to read CSV headers"));
+                }
             }
-            Err(e) => {
-                eprintln!("Failed to read CSV headers: {}", e);
-                return Err(Status::internal("Failed to read CSV headers"));
-            }
+            schemas.insert(req.collection_name.clone(), schema);
+            collections.insert(req.collection_name.clone(), Vec::new());
         }
-        schemas.insert(req.collection_name.clone(), schema);
-        let mut vec = Vec::new();
 
+        let collection = collections.get_mut(&req.collection_name).unwrap();
+        if !req.has_header {
+            let record = rdr.headers().map_err(|e| {
+                error!("Failed to read header from CSV: {:?}", e);
+                Status::internal("Failed to read header from CSV")
+            })?;
+            let row: Vec<String> = record.iter().map(|s| s.to_string()).collect();
+            collection.push(row);
+        }
         for result in rdr.records() {
             let record = result.map_err(|e| {
-                eprintln!("Failed to read record from CSV: {:?}", e);
+                error!("Failed to read record from CSV: {:?}", e);
                 Status::internal("Failed to read record from CSV")
             })?;
             let row: Vec<String> = record.iter().map(|s| s.to_string()).collect();
-            vec.push(row);
+            collection.push(row);
         }
-        collections.insert(req.collection_name, vec);
 
         let reply: () = ();
         Ok(Response::new(reply))
@@ -221,15 +294,16 @@ impl DataflowService for MyDataflowService {
         &self,
         request: Request<GetCollectionRequest>,
     ) -> Result<Response<Self::GetCollectionStream>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
         let req = request.into_inner();
 
         let collections = COLLECTIONS.lock().await;
         if let Some(vec) = collections.get(&req.collection_name) {
             let responses: Vec<Result<GetCollectionResponse, Status>> = vec.iter().cloned().map(|row| {
-                Ok(GetCollectionResponse { row: row })
+                Ok(GetCollectionResponse { row })
             }).collect();
-
+            info!("{:?}", responses);
             let stream = iter(responses);
 
             let response_stream = tonic::Response::new(stream);
@@ -243,7 +317,8 @@ impl DataflowService for MyDataflowService {
         &self,
         request: Request<()>,
     ) -> Result<Response<GetCollectionsResponse>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
     
         let collections = COLLECTIONS.lock().await;
         let mut response_collections: Vec<dataflow::Collection> = Vec::new();
@@ -264,15 +339,17 @@ impl DataflowService for MyDataflowService {
         let reply = GetCollectionsResponse {
             collections: response_collections,
         };
-    
-        Ok(Response::new(reply))
+        let response = Response::new(reply);
+        info!("{:?}", response);
+        Ok(response)
     }
 
     async fn add_row(
         &self,
         request: Request<AddRowRequest>,
     ) -> Result<Response<()>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
         let req = request.into_inner();
         let mut collections = COLLECTIONS.lock().await;
         
@@ -298,7 +375,8 @@ impl DataflowService for MyDataflowService {
         &self,
         request: Request<DeleteRowRequest>,
     ) -> Result<Response<()>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
         let req = request.into_inner(); 
 
         let mut collections = COLLECTIONS.lock().await;
@@ -324,15 +402,25 @@ impl DataflowService for MyDataflowService {
         &self,
         request: Request<AddCollectionRequest>,
     ) -> Result<Response<()>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
 
         let reply: () = ();
         let req = request.into_inner();
         
         let mut collections = COLLECTIONS.lock().await;
         let mut schemas = SCHEMAS.lock().await;
-        if collections.contains_key(&req.collection_name) || schemas.contains_key(&req.collection_name) {
-            return Err(Status::already_exists("Collection already exists"));
+        if collections.contains_key(&req.collection_name) && schemas.contains_key(&req.collection_name){
+            let schema = schemas.get(&req.collection_name).unwrap();
+            if schema.len() != req.schema.len() {
+                return Err(Status::invalid_argument("Schema length mismatch"));
+            }
+            for (data_type, value) in schema.iter().zip(req.schema.iter()) {
+                if *data_type != dataflow::DataType::try_from(*value).unwrap() {
+                    return Err(Status::invalid_argument("Schema mismatch"));
+                }
+            }
+            return Ok(Response::new(reply));
         }
         
         collections.insert(req.collection_name.clone(), vec![]);
@@ -345,7 +433,8 @@ impl DataflowService for MyDataflowService {
         &self,
         request: Request<DeleteCollectionRequest>,
     ) -> Result<Response<()>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
         let req = request.into_inner();
         
         let mut collections = COLLECTIONS.lock().await;
@@ -365,19 +454,40 @@ impl DataflowService for MyDataflowService {
         &self,
         request: Request<RunDataflowRequest>,
     ) -> Result<Response<Self::RunDataflowStream>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
+
         let req = request.into_inner();
         
         if let Ok(vec) = run_dataflow_so(req.so_path, req.fn_name).await {
-            let responses: Vec<Result<RunDataflowResponse, Status>> = vec.iter().cloned().map(|row| {
-                Ok(RunDataflowResponse { row: row })
-            }).collect();
+            if !req.output_csv_path.is_empty() {
+                let mut wtr = csv::WriterBuilder::new()
+                    .delimiter(b',')
+                    .from_path(req.output_csv_path).map_err(|e| {
+                        error!("Failed to create CSV writer: {:?}", e);
+                        Status::internal("Failed to create CSV writer")
+                    })?;
+                for row in vec.iter() {
+                    wtr.write_record(row).map_err(|e| {
+                        error!("Failed to write record to CSV: {:?}", e);
+                        Status::internal("Failed to write record to CSV")
+                    })?;
+                }
+                wtr.flush().map_err(|e| {
+                    error!("Failed to flush CSV writer: {:?}", e);
+                    Status::internal("Failed to flush CSV writer")
+                })?;
+                return Ok(Response::new(tokio_stream::iter(vec![])));
+            }
+            else {
+                let responses: Vec<Result<RunDataflowResponse, Status>> = vec.iter().cloned().map(|row| {
+                    Ok(RunDataflowResponse { row })
+                }).collect();
         
-
-            let stream = iter(responses);
-
-            let response_stream = tonic::Response::new(stream);
-            Ok(response_stream)
+                info!("{:?}", responses);
+                let stream = iter(responses);
+                let response_stream = tonic::Response::new(stream);
+                return Ok(response_stream);
+            }
         }
         else {
             return Err(Status::internal("Failed to run dataflow"));
@@ -387,8 +497,11 @@ impl DataflowService for MyDataflowService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let bind_ip = env::var("BIND_IP").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let addr = (bind_ip + ":50051").parse()?;
+    let bind_port = env::var("BIND_PORT").unwrap_or_else(|_| "50051".to_string());
+    let addr_string = format!("{}:{}", bind_ip, bind_port);
+    let addr = addr_string.parse()?;
     let dataflow = MyDataflowService::default();
 
     Server::builder()
@@ -402,13 +515,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<String>>, Status> {
     unsafe {
         let lib = Library::new(&so_path).map_err(|e| {
-            eprintln!("Failed to load library from path {}: {:?}", so_path, e);
+            error!("Failed to load library from path {}: {:?}", so_path, e);
             Status::not_found("Failed to load shared library")
         })?;
-        let function: Symbol<unsafe extern "C" fn(&HashMap<String, Vec<Vec<String>>>) -> Vec<Vec<String>>> = match lib.get(fn_name.as_bytes()) {
+        type MyFunctionType = unsafe extern "Rust" fn(&HashMap<String, Vec<Vec<String>>>) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error>>;
+        let function: Symbol<MyFunctionType> = match lib.get(fn_name.as_bytes()) {
             Ok(func) => func,
             Err(e) => {
-                eprintln!("Failed to get function {}: {:?}", fn_name, e);
+                error!("Failed to get function {}: {:?}", fn_name, e);
                 std::mem::drop(lib); // Drop the library before returning
                 return Err(Status::not_found("Failed to get function from library"));
             }
@@ -417,9 +531,15 @@ async fn run_dataflow_so(so_path: String, fn_name: String) -> Result<Vec<Vec<Str
         // Acquire the lock on collections
         let collections_guard = COLLECTIONS.lock().await;
 
-        let output: Vec<Vec<String>> = function(&*collections_guard);
+        let output: Vec<Vec<String>> = match function(&collections_guard) {
+            Ok(output) => output,
+            Err(e) => {
+                error!("Failed to run function {}: {:?}", fn_name, e);
+                return Err(Status::internal("Failed to run function"));
+            }
+        };
         // Drop the library immediately after using it
         std::mem::drop(lib);
-        return Ok(output)
+        Ok(output)
     }
 }

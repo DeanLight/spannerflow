@@ -10,27 +10,7 @@ repos:
         - "setuptools"
         - "black"
   
-  - repo: local
-    hooks:
-    - id: nbdev_readme
-      name: nbdev_readme
-      entry: nbdev_readme
-      language: system
-      pass_filenames: false
-
-    - id: nbdev_docs
-      name: nbdev_docs
-      entry: nbdev_docs
-      language: system
-      pass_filenames: false
-      
-    - id: nbdev_test
-      name: nbdev_test
-      language: system
-      entry: nbdev_test
-      pass_filenames: false
-      
-
+  
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.8.7
     hooks:
@@ -84,12 +64,3 @@ repos:
     hooks:
       - id: buf-lint
         args: [spannerflow/proto/dataflow/v1/dataflow.proto]
-
-  - repo: local
-    hooks:
-      - id: pytest-check
-        name: pytest-check
-        entry: pytest
-        language: system
-        pass_filenames: false
-        always_run: true

@@ -7,6 +7,7 @@ This file will become your README and also the index of your
 documentation.
 
 <!-- Pytest Coverage Comment:Begin -->
+<a href="https://github.com/DeanLight/spannerflow/blob/main/README.md"><img alt="Coverage" src="https://img.shields.io/badge/Coverage-21%25-red.svg" /></a><details><summary>Coverage Report </summary><table><tr><th>File</th><th>Stmts</th><th>Miss</th><th>Cover</th><th>Missing</th></tr><tbody><tr><td colspan="5"><b>spannerflow</b></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/config.py">config.py</a></td><td>26</td><td>2</td><td>92%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/config.py#L35">35</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/config.py#L39">39</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py">engine.py</a></td><td>226</td><td>177</td><td>22%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L33-L54">33&ndash;54</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L58-L89">58&ndash;89</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L102-L116">102&ndash;116</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L119-L129">119&ndash;129</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L132-L133">132&ndash;133</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L136-L137">136&ndash;137</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L140-L154">140&ndash;154</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L157-L160">157&ndash;160</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L163-L180">163&ndash;180</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L183-L186">183&ndash;186</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L191-L198">191&ndash;198</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L207-L215">207&ndash;215</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L218-L224">218&ndash;224</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L229-L233">229&ndash;233</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L238-L244">238&ndash;244</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L247-L253">247&ndash;253</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L260-L265">260&ndash;265</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L268-L273">268&ndash;273</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L276-L282">276&ndash;282</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L287-L294">287&ndash;294</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L303">303</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L306">306</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L309">309</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L318">318</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L321">321</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L324">324</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L329-L344">329&ndash;344</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/engine.py#L349-L353">349&ndash;353</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py">graph_utils.py</a></td><td>80</td><td>27</td><td>66%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py#L47-L56">47&ndash;56</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py#L63-L67">63&ndash;67</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py#L72-L89">72&ndash;89</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/graph_utils.py#L125">125</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/grpc_server.py">grpc_server.py</a></td><td>103</td><td>94</td><td>9%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/grpc_server.py#L27-L29">27&ndash;29</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/grpc_server.py#L36-L83">36&ndash;83</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/grpc_server.py#L90-L155">90&ndash;155</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/installations.py">installations.py</a></td><td>83</td><td>83</td><td>0%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/installations.py#L6-L140">6&ndash;140</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py">rust_dataflow.py</a></td><td>357</td><td>317</td><td>11%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L81-L104">81&ndash;104</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L109-L114">109&ndash;114</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L121-L123">121&ndash;123</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L128-L137">128&ndash;137</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L142-L151">142&ndash;151</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L164-L195">164&ndash;195</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L208-L220">208&ndash;220</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L231-L248">231&ndash;248</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L258-L259">258&ndash;259</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L270-L279">270&ndash;279</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L289-L316">289&ndash;316</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L326-L421">326&ndash;421</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L432-L482">432&ndash;482</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L487-L525">487&ndash;525</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L534-L611">534&ndash;611</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L622-L639">622&ndash;639</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L652-L703">652&ndash;703</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L708-L715">708&ndash;715</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L718-L719">718&ndash;719</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L722-L723">722&ndash;723</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L726-L753">726&ndash;753</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L756-L784">756&ndash;784</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/rust_dataflow.py#L790-L803">790&ndash;803</a></td></tr><tr><td>&nbsp; &nbsp;<a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py">span.py</a></td><td>99</td><td>69</td><td>30%</td><td><a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L29">29</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L45-L48">45&ndash;48</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L58">58</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L72-L97">72&ndash;97</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L100-L102">100&ndash;102</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L105-L121">105&ndash;121</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L128-L132">128&ndash;132</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L137">137</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L145">145</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L148">148</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L151">151</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L155">155</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L158">158</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L161-L170">161&ndash;170</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L173">173</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L177-L181">177&ndash;181</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L185-L192">185&ndash;192</a>, <a href="https://github.com/DeanLight/spannerflow/blob/main/spannerflow/span.py#L196">196</a></td></tr><tr><td><b>TOTAL</b></td><td><b>978</b></td><td><b>769</b></td><td><b>21%</b></td><td>&nbsp;</td></tr></tbody></table></details>
 <!-- Pytest Coverage Comment:End -->
 
 ## Developer Guide
@@ -15,7 +16,20 @@ documentation.
 python -m venv venv
 source venv/bin/activate
 
-pip install -U pip nbdev 
+pip install -U pip 
+```
+
+### To generate python from protobuf
+
+``` bash
+cd spannerflow/proto
+python -m grpc_tools.protoc -I. --python_out=.. --grpc_python_out=.. ./dataflow/v1/dataflow.proto
+cd ../..
+
+sed -i '' 's/from google.protobuf import runtime_version as _runtime_version/from google.protobuf import runtime_version as _runtime_version  # type: ignore/g' spannerflow/dataflow/v1/dataflow_pb2.py
+
+sed -i '' 's/from dataflow.v1 import dataflow_pb2 as dataflow_dot_v1_dot_dataflow__pb2/from spannerflow.dataflow.v1 import dataflow_pb2 as dataflow_dot_v1_dot_dataflow__pb2/g' spannerflow/dataflow/v1/dataflow_pb2_grpc.py
+
 ```
 
 If you are new to using `nbdev` here are some useful pointers to get you
@@ -48,18 +62,6 @@ Install latest from the GitHub
 $ pip install git+https://github.com/DeanLight/spannerflow.git
 ```
 
-or from [conda](https://anaconda.org/DeanLight/spannerflow)
-
-``` sh
-$ conda install -c DeanLight spannerflow
-```
-
-or from [pypi](https://pypi.org/project/spannerflow/)
-
-``` sh
-$ pip install spannerflow
-```
-
 ### Documentation
 
 Documentation can be found hosted on this GitHub
@@ -74,20 +76,84 @@ find package manager specific guidelines on
 Nodes should follow this:
 
 must have “schema” which is a list of strings must have “op” which is
-one of: \* “union” \* “rename” \* “select” \* “project” \* “groupby” \*
-“product” \* “join” \* “ie_map” \* “get_const” \* “get_rel”
+one of:
 
-if “op” is “ie_map” it have to include: \* “name” which is a string \*
-“in_schema” which is a list of types or functions \* “out_schema” which
-is a list of types or functions \* “out_arity” which is a number \*
-“in_arity” which is a number
+- “union”
+- “rename”
+- “select”
+- “project”
+- “groupby”
+- “product”
+- “join”
+- “ie_map”
+- “get_const”
+- “get_rel”
 
-if “op” is “get_const” \* “const_dict” which is a dictinary with column
-as a key (appears in “schema”) and a const as a value.
+if “op” is “ie_map” it have to include:
 
-if “op” is “groupby” it have to include: \* “agg” which is a list of
-strings or None in length of schema which indicates what and if to apply
-aggregation function on the column in this position
+- “name” which is a string
+- “in_schema” which is a list of types or functions
+- “out_schema” which is a list of types or functions
+- “out_arity” which is a number
+- “in_arity” which is a number
 
-if “op” is “select” it have to include: \* “theta” which is Theta object
-that indicates what selection to do
+if “op” is “get_const”:
+
+- “const_dict” which is a dictinary with column as a key (appears in
+  “schema”) and a const as a value.
+
+if “op” is “groupby” it have to include:
+
+- “agg” which is a list of strings or None in length of schema which
+  indicates what and if to apply aggregation function on the column in
+  this position
+
+if “op” is “select” it have to include:
+
+- “theta” which is Theta object that indicates what selection to do
+
+## Getting started
+
+``` python
+from spannerflow.dataflow.v1 import dataflow_pb2
+from spannerflow.engine import Engine
+
+
+engine = Engine(ie_functions={})
+
+engine.add_collection("X", [dataflow_pb2.DATA_TYPE_STRING, dataflow_pb2.DATA_TYPE_INT, dataflow_pb2.DATA_TYPE_BOOL])
+
+for collection in engine.get_collections():
+    print(collection)
+
+engine.add_row("X", ["a", 12, False])
+engine.add_row("X", ["b", 10, True])
+engine.add_rows("X", [
+    ["c", 10, False],
+    ["d", 12, True],
+])
+
+
+for row in engine.get_collection("X"):
+    print(row)
+
+engine.delete_row("X", ["a", 12, False])
+
+for row in engine.get_collections():
+    print(row)
+
+engine.save_to_csv("X", "X.csv")
+
+engine.delete_collection("X")
+
+for collection in engine.get_collections():
+    print(collection)
+
+engine.load_from_csv("X", "X.csv")
+
+for collection in engine.get_collections():
+    print(collection)
+
+for row in engine.get_collection("X"):
+    print(row)
+```

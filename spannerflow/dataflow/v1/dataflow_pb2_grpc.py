@@ -6,7 +6,7 @@ import warnings
 from spannerflow.dataflow.v1 import dataflow_pb2 as dataflow_dot_v1_dot_dataflow__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
-GRPC_GENERATED_VERSION = '1.67.0'
+GRPC_GENERATED_VERSION = '1.67.1'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -26,7 +26,7 @@ if _version_not_supported:
     )
 
 
-class IEFunctionServiceStub(object):
+class FunctionServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -36,13 +36,18 @@ class IEFunctionServiceStub(object):
             channel: A grpc.Channel.
         """
         self.RunIEFunction = channel.stream_stream(
-                '/dataflow.v1.IEFunctionService/RunIEFunction',
+                '/dataflow.v1.FunctionService/RunIEFunction',
                 request_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionRequest.SerializeToString,
                 response_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionResponse.FromString,
                 _registered_method=True)
+        self.RunAggFunction = channel.stream_stream(
+                '/dataflow.v1.FunctionService/RunAggFunction',
+                request_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionRequest.SerializeToString,
+                response_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionResponse.FromString,
+                _registered_method=True)
 
 
-class IEFunctionServiceServicer(object):
+class FunctionServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def RunIEFunction(self, request_iterator, context):
@@ -51,23 +56,34 @@ class IEFunctionServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RunAggFunction(self, request_iterator, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-def add_IEFunctionServiceServicer_to_server(servicer, server):
+
+def add_FunctionServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RunIEFunction': grpc.stream_stream_rpc_method_handler(
                     servicer.RunIEFunction,
                     request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionRequest.FromString,
                     response_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionResponse.SerializeToString,
             ),
+            'RunAggFunction': grpc.stream_stream_rpc_method_handler(
+                    servicer.RunAggFunction,
+                    request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionRequest.FromString,
+                    response_serializer=dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'dataflow.v1.IEFunctionService', rpc_method_handlers)
+            'dataflow.v1.FunctionService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('dataflow.v1.IEFunctionService', rpc_method_handlers)
+    server.add_registered_method_handlers('dataflow.v1.FunctionService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class IEFunctionService(object):
+class FunctionService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -84,9 +100,36 @@ class IEFunctionService(object):
         return grpc.experimental.stream_stream(
             request_iterator,
             target,
-            '/dataflow.v1.IEFunctionService/RunIEFunction',
+            '/dataflow.v1.FunctionService/RunIEFunction',
             dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionRequest.SerializeToString,
             dataflow_dot_v1_dot_dataflow__pb2.RunIEFunctionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RunAggFunction(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(
+            request_iterator,
+            target,
+            '/dataflow.v1.FunctionService/RunAggFunction',
+            dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionRequest.SerializeToString,
+            dataflow_dot_v1_dot_dataflow__pb2.RunAggFunctionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -157,6 +200,11 @@ class DataflowServiceStub(object):
                 request_serializer=dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.GetSpan = channel.unary_unary(
+                '/dataflow.v1.DataflowService/GetSpan',
+                request_serializer=dataflow_dot_v1_dot_dataflow__pb2.GetSpanRequest.SerializeToString,
+                response_deserializer=dataflow_dot_v1_dot_dataflow__pb2.GetSpanResponse.FromString,
+                _registered_method=True)
 
 
 class DataflowServiceServicer(object):
@@ -222,6 +270,12 @@ class DataflowServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetSpan(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataflowServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -274,6 +328,11 @@ def add_DataflowServiceServicer_to_server(servicer, server):
                     servicer.SaveToCSV,
                     request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetSpan': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSpan,
+                    request_deserializer=dataflow_dot_v1_dot_dataflow__pb2.GetSpanRequest.FromString,
+                    response_serializer=dataflow_dot_v1_dot_dataflow__pb2.GetSpanResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -546,6 +605,33 @@ class DataflowService(object):
             '/dataflow.v1.DataflowService/SaveToCSV',
             dataflow_dot_v1_dot_dataflow__pb2.SaveToCSVRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetSpan(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/dataflow.v1.DataflowService/GetSpan',
+            dataflow_dot_v1_dot_dataflow__pb2.GetSpanRequest.SerializeToString,
+            dataflow_dot_v1_dot_dataflow__pb2.GetSpanResponse.FromString,
             options,
             channel_credentials,
             insecure,
