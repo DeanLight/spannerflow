@@ -220,12 +220,12 @@ def get_union_code(
     if len(preds) == 1:
         return f"{var_decl} = {prev_node1_str}.clone();"
 
-    uninion_code = prev_node1_str
+    union_code = prev_node1_str
     for i in range(1, len(preds)):
         prev_node_i_str = get_node_str(preds[i], anchor=anchor, in_iterate=in_iterate)
-        uninion_code = f"{uninion_code}.concat(&{prev_node_i_str})"
+        union_code = f"{union_code}.concat(&{prev_node_i_str})"
 
-    return f"{var_decl} = {uninion_code}.distinct();"
+    return f"{var_decl} = {union_code}.distinct();"
 
 # %% ../nbs/50_rust_dataflow.ipynb 10
 def get_project_code(
