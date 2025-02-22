@@ -465,7 +465,6 @@ def get_ie_map_code(
 
         case (
             "as_str"
-            | "rgx_split"
             | "rgx_is_match"
             | "deconstruct_span"
             | "span_contained" as original_func_name
